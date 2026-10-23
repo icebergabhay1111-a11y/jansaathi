@@ -1,0 +1,100 @@
+"""Government services & documents. Fees and processing times are only given where documented."""
+
+TODAY = "2026-10-23"
+
+
+def S(url, org, title):
+    return {"url": url, "organisation": org, "title": title, "type": "official_portal", "retrieved": TODAY}
+
+
+NGSP = S("https://services.india.gov.in", "National Portal of India", "National Government Services Portal")
+
+
+def svc(slug, name, name_hi, aliases, summary, who, authority, level, online, steps, portal, help_channel=None, documents=None, in_person=None, fee=None, processing=None, tracking=None, correction=None, appeal=None, vs="reviewed", sources=None, popular=False, states=None):
+    return {"slug": slug, "name": name, "name_hi": name_hi, "aliases": aliases, "summary": summary, "who_can_use": who,
+            "authority": authority, "level": level, "states": states or ["ALL"], "online": online, "in_person": in_person,
+            "documents": documents or [], "steps": steps, "fee": fee, "processing_time": processing, "tracking": tracking,
+            "correction": correction, "appeal": appeal, "portal_url": portal, "help_channel": help_channel, "popular": popular,
+            "verification_status": vs, "last_verified": TODAY if vs != "needs_verification" else None,
+            "review_interval_days": 120, "sources": sources or ([S(portal, authority, name)] if portal else [NGSP])}
+
+
+STATE_SVC_NOTE = "Issued by your state/UT government — the portal, documents, fee and time limit differ by state."
+
+SERVICES = [
+    svc("svc-rti", "File an RTI application", "RTI आवेदन दाखिल करें", ["RTI", "right to information", "सूचना का अधिकार"],
+        "Request information from a public authority under the RTI Act, 2005.", "Any citizen of India", "Department of Personnel and Training (central public authorities)", "central", "yes",
+        ["Write a specific request to the Public Information Officer", "File online on RTI Online for central ministries/departments, or by post to the PIO", "Pay the fee (BPL applicants exempt)", "Keep the registration number"],
+        "https://rtionline.dopt.gov.in", help_channel="Central Information Commission (cic.gov.in) for appeals", fee="₹10 for central public authorities (RTI Rules, 2012); BPL exempt. State fees differ.",
+        processing="Reply within 30 days; 48 hours where life or liberty is involved (RTI Act s.7).", tracking="Use the registration number on RTI Online.", appeal="First appeal within 30 days; second appeal to the Information Commission within 90 days.", popular=True),
+    svc("svc-cpgrams", "Lodge a public grievance (CPGRAMS)", "लोक शिकायत दर्ज करें (CPGRAMS)", ["grievance", "pgportal", "complaint", "शिकायत"],
+        "Online grievance system for central ministries/departments, also linked with many states.", "Any citizen", "Department of Administrative Reforms and Public Grievances", "central", "yes",
+        ["Register on pgportal.gov.in", "Choose the ministry/department or state", "Describe the grievance and attach documents", "Track with the registration number"],
+        "https://pgportal.gov.in", tracking="Status by registration number on the portal", appeal="An appeal option is available on the portal after closure.", popular=True),
+    svc("svc-passport", "Apply for or renew a passport", "पासपोर्ट आवेदन/नवीनीकरण", ["passport", "पासपोर्ट", "PSK"],
+        "Fresh and re-issue passports through Passport Seva.", "Indian citizens", "Ministry of External Affairs (Passport Seva)", "central", "partial",
+        ["Register on Passport Seva", "Fill the online form and pay the fee", "Book an appointment at a Passport Seva Kendra / POPSK", "Attend with original documents", "Police verification as applicable"],
+        "https://www.passportindia.gov.in", in_person="Visit to Passport Seva Kendra required for biometrics and document check.", tracking="Track application status on the portal.", popular=True),
+    svc("svc-voter-registration", "Register as a voter / correct voter details", "मतदाता पंजीकरण / सुधार", ["voter id", "EPIC", "Form 6", "मतदाता पहचान पत्र", "voter registration"],
+        "New registration (Form 6), corrections and shifting of voter details.", "Indian citizens aged 18+ (advance applications allowed from 17)", "Election Commission of India", "central", "yes",
+        ["Visit the Voters' Service Portal or use the Voter Helpline app", "Fill Form 6 for new registration (Form 8 for corrections/shifting)", "Upload age and address proof", "Booth Level Officer verification"],
+        "https://voters.eci.gov.in", help_channel="Voter helpline 1950", tracking="Track by reference ID on the portal", popular=True),
+    svc("svc-driving-licence", "Learner's licence and driving licence", "लर्नर/ड्राइविंग लाइसेंस", ["driving licence", "DL", "LLR", "ड्राइविंग लाइसेंस", "sarathi"],
+        "Apply for learner's licence, driving licence and renewals through the Sarathi portal of the Ministry of Road Transport and Highways.", "Eligible applicants by vehicle class and age", "Ministry of Road Transport and Highways / state transport departments", "central", "partial",
+        ["Apply on the Sarathi portal and select your state", "Take the learner's licence test (online in many states)", "Book and appear for the driving test at the RTO"],
+        "https://sarathi.parivahan.gov.in", in_person="Driving test at RTO is required.", vs="reviewed", popular=True),
+    svc("svc-vehicle-registration", "Vehicle registration services", "वाहन पंजीकरण सेवाएँ", ["RC", "vehicle registration", "vahan", "वाहन"],
+        "Registration certificate, transfer of ownership, address change and related services through VAHAN.", "Vehicle owners", "Ministry of Road Transport and Highways / state transport departments", "central", "partial",
+        ["Use the VAHAN citizen services portal", "Select the service and your RTO", "Pay fees online and upload documents"], "https://vahan.parivahan.gov.in"),
+    svc("svc-birth-certificate", "Birth registration and certificate", "जन्म पंजीकरण और प्रमाण पत्र", ["birth certificate", "जन्म प्रमाण पत्र", "CRS"],
+        "Births must be registered with the local Registrar. Registration within 21 days is free; late registration has additional requirements.", "Parents/guardians; the hospital usually reports institutional births", "Office of the Registrar General of India (through local registrars)", "central", "partial",
+        ["Hospital births are usually reported by the hospital — confirm with the local registrar", "Register within 21 days at the municipal/panchayat registrar or via the Civil Registration System portal where enabled", "Download/collect the certificate"],
+        "https://crsorgi.gov.in", correction="Corrections through the local registrar under the Registration of Births and Deaths Act, 1969 and state rules.", vs="reviewed", popular=True,
+        sources=[S("https://crsorgi.gov.in", "Office of the Registrar General, India", "Civil Registration System")]),
+    svc("svc-death-certificate", "Death registration and certificate", "मृत्यु पंजीकरण और प्रमाण पत्र", ["death certificate", "मृत्यु प्रमाण पत्र"],
+        "Deaths must be registered with the local Registrar; the certificate is needed for pensions, insurance and property.", "Family members / informants", "Office of the Registrar General of India (through local registrars)", "central", "partial",
+        ["Register within 21 days at the local registrar or CRS portal", "Collect the certificate"], "https://crsorgi.gov.in"),
+    svc("svc-income-certificate", "Income certificate", "आय प्रमाण पत्र", ["income certificate", "आय प्रमाण पत्र", "aay praman patra"],
+        f"Certificate of family income used for scholarships and welfare schemes. {STATE_SVC_NOTE}", "Residents of the state", "State Revenue Department (Tehsil/Taluk office)", "state", "varies",
+        ["Find your state's e-District / service portal (listed on the National Government Services Portal)", "Apply online or at a Common Service Centre / tehsil office", "Track and download the digitally signed certificate"],
+        "https://services.india.gov.in", vs="needs_verification", popular=True),
+    svc("svc-caste-certificate", "Caste / community certificate", "जाति प्रमाण पत्र", ["caste certificate", "community certificate", "SC ST OBC certificate", "जाति प्रमाण पत्र"],
+        f"Certificate of SC/ST/OBC status issued by the competent state authority. {STATE_SVC_NOTE}", "Eligible residents", "State Revenue / Social Welfare Department", "state", "varies",
+        ["Apply via your state's e-District portal or tehsil office", "Submit supporting documents as required by the state"], "https://services.india.gov.in", vs="needs_verification"),
+    svc("svc-domicile", "Domicile / residence certificate", "निवास प्रमाण पत्र", ["domicile", "residence certificate", "nativity", "निवास प्रमाण पत्र"],
+        f"Proof of residence in a state, often needed for state quotas and jobs. {STATE_SVC_NOTE}", "Residents of the state", "State Revenue Department", "state", "varies",
+        ["Apply on your state's e-District portal or at the tehsil office"], "https://services.india.gov.in", vs="needs_verification"),
+    svc("svc-udid", "Disability certificate and UDID card", "दिव्यांगता प्रमाण पत्र और UDID कार्ड", ["UDID", "disability certificate", "दिव्यांग प्रमाण पत्र", "swavlamban"],
+        "Unique Disability ID and disability certificate for persons with disabilities, through the national UDID portal.", "Persons with disabilities", "Department of Empowerment of Persons with Disabilities", "central", "partial",
+        ["Apply on the UDID portal", "Attend medical assessment at the designated hospital/board", "Receive the certificate and UDID card"], "https://www.swavlambancard.gov.in", in_person="Medical assessment required."),
+    svc("svc-ration-card", "Ration card", "राशन कार्ड", ["ration card", "राशन कार्ड", "PDS card"],
+        f"New ration card, adding/removing members and corrections. {STATE_SVC_NOTE}", "Residents meeting state criteria", "State Food & Civil Supplies Department", "state", "varies",
+        ["Find your state food department portal (linked from nfsa.gov.in)", "Apply online or at the food office/CSC", "Field verification by the state"], "https://nfsa.gov.in", vs="needs_verification", popular=True),
+    svc("svc-eshram", "e-Shram registration (unorganised workers)", "ई-श्रम पंजीकरण", ["e-Shram", "eshram card", "unorganised worker registration", "श्रमिक पंजीकरण"],
+        "National database registration for unorganised workers, giving a UAN-linked e-Shram card.", "Unorganised workers (age limits per portal)", "Ministry of Labour and Employment", "central", "yes",
+        ["Self-register on eshram.gov.in with mobile OTP", "Or register at a Common Service Centre"], "https://eshram.gov.in"),
+    svc("svc-udyam", "Udyam registration (MSME)", "उद्यम पंजीकरण (MSME)", ["Udyam", "MSME registration", "business registration", "उद्यम"],
+        "Free online registration for micro, small and medium enterprises.", "Business owners", "Ministry of Micro, Small and Medium Enterprises", "central", "yes",
+        ["Register on the official Udyam Registration portal (beware of paid look-alike sites)"], "https://udyamregistration.gov.in", fee="Free on the official portal."),
+    svc("svc-legal-aid", "Apply for free legal aid", "निःशुल्क विधिक सहायता के लिए आवेदन", ["legal aid", "NALSA", "free lawyer", "विधिक सहायता"],
+        "Free legal services through Legal Services Authorities for eligible persons (Legal Services Authorities Act, 1987).", "Persons eligible under Section 12 of the Act", "National Legal Services Authority", "central", "partial",
+        ["Call 15100 or visit the District Legal Services Authority", "Apply online through NALSA where available"], "https://nalsa.gov.in", help_channel="NALSA helpline 15100", fee="Free for eligible persons.", popular=True),
+    svc("svc-land-records", "Land records", "भूमि अभिलेख", ["land records", "bhulekh", "khatauni", "7/12", "patta", "भूलेख"],
+        f"View and obtain copies of land records (record of rights). {STATE_SVC_NOTE}", "Landholders and the public (as per state rules)", "State Revenue Department", "state", "varies",
+        ["Find your state's land records portal on the National Government Services Portal", "Search by district, tehsil, village and survey number"], "https://services.india.gov.in", vs="needs_verification"),
+    svc("svc-scholarship-nsp", "Apply for central scholarships (NSP)", "केंद्रीय छात्रवृत्ति आवेदन (NSP)", ["NSP", "national scholarship portal", "छात्रवृत्ति पोर्टल"],
+        "Single portal for many central (and some state) scholarships.", "Students", "Ministry of Electronics and IT / scheme ministries", "central", "yes",
+        ["Register on NSP", "Choose eligible schemes", "Submit before the deadline", "Institution verification"], "https://scholarships.gov.in", popular=True),
+    svc("svc-life-certificate", "Digital life certificate for pensioners (Jeevan Pramaan)", "पेंशनभोगियों के लिए डिजिटल जीवन प्रमाण", ["Jeevan Pramaan", "life certificate", "जीवन प्रमाण"],
+        "Pensioners can submit a biometric-based digital life certificate instead of visiting the pension office.", "Pensioners", "Ministry of Electronics and IT", "central", "yes",
+        ["Use the Jeevan Pramaan app/portal or a CSC/bank", "Authenticate biometrically", "Certificate is shared with the pension disbursing agency"], "https://jeevanpramaan.gov.in"),
+    svc("svc-cybercrime", "Report cybercrime", "साइबर अपराध की रिपोर्ट करें", ["cybercrime", "1930", "online fraud", "साइबर"],
+        "Report online financial fraud and other cybercrimes to law enforcement.", "Anyone", "Ministry of Home Affairs (I4C)", "central", "yes",
+        ["Call 1930 immediately for financial fraud", "File a complaint on cybercrime.gov.in"], "https://cybercrime.gov.in", help_channel="Helpline 1930", popular=True),
+    svc("svc-consumer-complaint", "Consumer complaint", "उपभोक्ता शिकायत", ["consumer helpline", "1915", "e-daakhil", "उपभोक्ता"],
+        "Register a consumer grievance for mediation, or file a case online with a Consumer Commission.", "Consumers", "Department of Consumer Affairs", "central", "yes",
+        ["Register on consumerhelpline.gov.in or call 1915", "If unresolved, file on e-Daakhil"], "https://consumerhelpline.gov.in", help_channel="Helpline 1915"),
+    svc("svc-digilocker", "DigiLocker — access digital documents", "डिजीलॉकर", ["DigiLocker", "digital documents", "डिजीलॉकर"],
+        "Government platform to fetch and store digitally issued documents such as marksheets and driving licences.", "Indian residents", "Ministry of Electronics and IT", "central", "yes",
+        ["Sign up on DigiLocker", "Fetch documents from issuing agencies"], "https://www.digilocker.gov.in"),
+]
