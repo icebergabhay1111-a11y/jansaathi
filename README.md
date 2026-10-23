@@ -69,6 +69,9 @@ echo "SECRET_KEY=$(python -c 'import secrets;print(secrets.token_urlsafe(48))')"
 docker compose up --build       # Postgres + API + web on :3000
 ```
 
+### Deploy on Render
+Dashboard → New → Blueprint → select this repo. `render.yaml` creates a free PostgreSQL database and one web service. Details in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
 ### Enabling the AI assistant (Gemini)
 1. Create a key at Google AI Studio.
 2. Put `GEMINI_API_KEY=...` in `backend/.env` (never in the frontend). Optionally set `GEMINI_MODEL` (default `gemini-2.5-flash`).

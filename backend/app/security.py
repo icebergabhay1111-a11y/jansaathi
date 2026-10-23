@@ -91,4 +91,11 @@ limiter = RateLimiter()
 
 
 def client_ip(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
+    """Client IP for rate limiting. Behind the Next.js proxy (loopback) use the forwarded headers
+    set by the hosting edge; otherwise the socket address."""
+    host = request.client.host if request.client else "unknown"
+    if host in ("127.0.0.1", "::1", "localhost"):
+        h = request.headers.get("true-client-ip") or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        if h:
+            return h
+    return host

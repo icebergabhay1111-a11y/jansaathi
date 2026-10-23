@@ -1,6 +1,7 @@
 """Management commands.
 
-  python -m app.cli seed                      # import the curated seed records (idempotent)
+  python -m app.cli seed                      # import/refresh the curated seed records
+  python -m app.cli seed-if-empty             # seed only a fresh database (used on deploy)
   python -m app.cli create-admin EMAIL        # create/promote an admin (prompts for password)
   python -m app.cli init-dev                  # create tables directly (dev only; prefer `alembic upgrade head`)
 """
@@ -15,7 +16,7 @@ from sqlalchemy import select
 
 from .db import Base, SessionLocal, engine
 from .importer import seed_all
-from .models import User
+from .models import Scheme, User
 from .security import hash_password
 
 
@@ -32,6 +33,12 @@ def main(argv: list[str]) -> int:
     try:
         if cmd == "seed":
             print(json.dumps(seed_all(db), indent=2))
+            return 0
+        if cmd == "seed-if-empty":  # used at container start: never overwrites edited content
+            if db.scalar(select(Scheme.id).limit(1)) is None:
+                print(json.dumps(seed_all(db), indent=2))
+            else:
+                print("database already has content; seed skipped")
             return 0
         if cmd == "create-admin":
             email = argv[1].strip().lower()

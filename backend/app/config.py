@@ -26,7 +26,12 @@ class Settings:
     def __init__(self) -> None:
         self.env = os.getenv("JANSAATHI_ENV", "development")
         # SQLite for local dev; set postgresql+psycopg://user:pass@host/db in production.
-        self.database_url = os.getenv("DATABASE_URL", "sqlite:///./jansaathi.db")
+        url = os.getenv("DATABASE_URL", "sqlite:///./jansaathi.db")
+        # Hosts like Render/Heroku give postgres:// or postgresql:// — use the installed psycopg 3 driver.
+        for prefix in ("postgres://", "postgresql://"):
+            if url.startswith(prefix):
+                url = "postgresql+psycopg://" + url[len(prefix):]
+        self.database_url = url
         secret = os.getenv("SECRET_KEY")
         if not secret:
             if self.env == "production":

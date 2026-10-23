@@ -13,6 +13,13 @@ The web app proxies `/api/*` to `BACKEND_URL`, so browsers only talk to one orig
 Backend — see `backend/.env.example`. Required in production: `JANSAATHI_ENV=production`, `DATABASE_URL`, `SECRET_KEY`, `COOKIE_SECURE=true`. Optional: `GEMINI_API_KEY`, `GEMINI_MODEL`, rate limits.
 Frontend: `BACKEND_URL` (e.g. `http://api:8000` or your API's internal URL).
 
+## Option R — Render (one click, free tier)
+The repo includes `render.yaml` (Blueprint) and a root `Dockerfile` that runs the website and API in one container (`start.sh`), plus a free PostgreSQL database.
+1. Render Dashboard → **New → Blueprint** → connect GitHub → pick `jansaathi` → Apply.
+2. When prompted, optionally fill `GEMINI_API_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` (≥12 chars). Leave blank to skip.
+3. First deploy builds the image (~5–10 min), runs migrations, seeds an empty database, and serves on `https://<service>.onrender.com`. Health check: `/api/health`.
+Notes: free web services sleep after ~15 min idle (first request takes ~1 min); Render's free PostgreSQL expires after 30 days unless upgraded; every push to `main` redeploys. `DATABASE_URL` from Render (`postgres://…`) is converted to the psycopg driver automatically. Seeding runs only on an empty database, so admin edits are never overwritten.
+
 ## Option A — Docker Compose (single VM)
 ```bash
 cat > .env <<EOF
