@@ -82,7 +82,7 @@ If the key is missing, the quota runs out, or Gemini errors, the assistant autom
 ## Tests
 
 ```bash
-cd backend && python -m pytest -q                       # 37 unit + integration tests (SQLite)
+cd backend && python -m pytest -q                       # 39 unit + integration tests (SQLite)
 TEST_DATABASE_URL=postgresql+psycopg://... python -m pytest -q   # same suite on PostgreSQL
 # with both servers running:
 python e2e/journeys.py      # 8 browser journeys (Playwright)

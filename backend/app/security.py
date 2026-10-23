@@ -2,6 +2,7 @@
 role checks, CSRF header check for cookie-authenticated writes, rate limiting."""
 from __future__ import annotations
 
+import ipaddress
 import time
 from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
@@ -90,12 +91,33 @@ class RateLimiter:
 limiter = RateLimiter()
 
 
+def _ip(value: str):
+    try:
+        return ipaddress.ip_address(value.strip())
+    except ValueError:
+        return None
+
+
 def client_ip(request: Request) -> str:
-    """Client IP for rate limiting. Behind the Next.js proxy (loopback) use the forwarded headers
-    set by the hosting edge; otherwise the socket address."""
-    host = request.client.host if request.client else "unknown"
-    if host in ("127.0.0.1", "::1", "localhost"):
-        h = request.headers.get("true-client-ip") or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
-        if h:
-            return h
-    return host
+    """Best-effort visitor IP for rate limiting.
+
+    Forwarding headers are only trusted when the request reached us from an internal hop
+    (loopback / private network, e.g. the Next.js proxy or a Render/Docker load balancer).
+    Order: CF-Connecting-IP / True-Client-IP (set by Cloudflare, which fronts Render and
+    overwrites client-sent values), then the right-most *public* address in X-Forwarded-For
+    (entries further left can be supplied by the client), then the socket address.
+    """
+    peer = request.client.host if request.client else ""
+    p = _ip(peer)
+    if p is None or not p.is_global:
+        for name in ("cf-connecting-ip", "true-client-ip"):
+            v = _ip(request.headers.get(name, ""))
+            if v is not None:
+                return str(v)
+        chain = [ip for ip in (_ip(x) for x in request.headers.get("x-forwarded-for", "").split(",")) if ip is not None]
+        for ip in reversed(chain):
+            if ip.is_global:
+                return str(ip)
+        if chain:
+            return str(chain[-1])
+    return peer or "unknown"

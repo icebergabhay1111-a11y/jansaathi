@@ -3,8 +3,8 @@
 ## Results at build time (23 Oct 2026)
 | Suite | Result |
 |---|---|
-| Backend unit + integration (`backend/tests`), SQLite | **37 passed** |
-| Same suite on PostgreSQL 16 | **37 passed** |
+| Backend unit + integration (`backend/tests`), SQLite | **39 passed** |
+| Same suite on PostgreSQL 16 | **39 passed** |
 | Alembic migration + seed on SQLite and PostgreSQL | OK, 0 validation errors |
 | Frontend `tsc`, `next build`, ESLint | Pass (7 lint warnings, 0 errors — see Known limitations) |
 | Browser journeys (`e2e/journeys.py`, Playwright/Chromium) | **8 / 8 passed** |

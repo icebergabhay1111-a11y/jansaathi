@@ -14,6 +14,7 @@
 | SQL injection: ORM-parameterised queries only | ✅ | |
 | Output encoding: React escapes all text; assistant output rendered without HTML | ✅ | `ask/page.tsx` `Rich` |
 | Rate limiting on login/register, assistant, reports | 🟡 in-memory, per-process | `security.RateLimiter` — use Redis when scaled |
+| Per-visitor IP for rate limits behind proxies | ✅ tested | `security.client_ip`: trusts `CF-Connecting-IP` / `True-Client-IP`, then the right-most public `X-Forwarded-For` hop — only when the request arrived from an internal (loopback/private) hop. On hosts **not** fronted by Cloudflare, strip `CF-Connecting-IP`/`True-Client-IP` at your proxy so clients cannot spoof them |
 | Safe error messages (no stack traces to users; request IDs) | ✅ | `main.py` |
 | Security headers (nosniff, frame DENY, referrer policy, permissions policy) | ✅ | `main.py`, `next.config.ts` |
 | Audit log for create/update/transition/verify/import/role changes | ✅ tested | `AuditLog` |

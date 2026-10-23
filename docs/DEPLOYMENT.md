@@ -16,8 +16,8 @@ Frontend: `BACKEND_URL` (e.g. `http://api:8000` or your API's internal URL).
 ## Option R — Render (one click, free tier)
 The repo includes `render.yaml` (Blueprint) and a root `Dockerfile` that runs the website and API in one container (`start.sh`), plus a free PostgreSQL database.
 1. Render Dashboard → **New → Blueprint** → connect GitHub → pick `jansaathi` → Apply.
-2. When prompted, optionally fill `GEMINI_API_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` (≥12 chars). Leave blank to skip.
-3. First deploy builds the image (~5–10 min), runs migrations, seeds an empty database, and serves on `https://<service>.onrender.com`. Health check: `/api/health`.
+2. When prompted, optionally fill `GEMINI_API_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` (**at least 12 characters** — a shorter password is rejected and no admin is created; the deploy log says so). Leave blank to skip. You can change them later under the service's **Environment** tab; saving restarts the service and applies them.
+3. First deploy builds the image (~3–10 min). On every start, `start.sh` runs `python -m app.cli bootstrap` (migrations, seed if the database is empty, admin from env) in one process, starts the API, waits until `/api/health` answers, and only then opens the website port — so visitors never reach the site before its data service is ready. Served on `https://<service>.onrender.com`.
 Notes: free web services sleep after ~15 min idle (first request takes ~1 min); Render's free PostgreSQL expires after 30 days unless upgraded; every push to `main` redeploys. `DATABASE_URL` from Render (`postgres://…`) is converted to the psycopg driver automatically. Seeding runs only on an empty database, so admin edits are never overwritten.
 
 ## Option A — Docker Compose (single VM)

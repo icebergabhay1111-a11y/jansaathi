@@ -118,3 +118,34 @@ def test_validation_rejects_fabricated_links():
     assert any("not an official" in e for e in validate_record("scheme", bad))
     no_src = {**SCHEMES[0], "sources": []}
     assert validate_record("scheme", no_src)
+
+
+def _req(peer, headers=None):
+    from starlette.requests import Request
+    hdrs = [(k.lower().encode(), v.encode()) for k, v in (headers or {}).items()]
+    return Request({"type": "http", "client": (peer, 1234), "headers": hdrs})
+
+
+def test_client_ip_behind_render_and_cloudflare():
+    from app.security import client_ip
+    # Cloudflare header wins (cannot be spoofed by the client when traffic passes Cloudflare)
+    assert client_ip(_req("127.0.0.1", {"cf-connecting-ip": "49.36.10.5", "x-forwarded-for": "1.1.1.1, 49.36.10.5, 10.24.217.11"})) == "49.36.10.5"
+    # Without it: right-most public hop, ignoring internal proxies and client-supplied prefixes
+    assert client_ip(_req("127.0.0.1", {"x-forwarded-for": "8.8.8.8, 49.36.10.5, 10.24.217.11"})) == "49.36.10.5"
+    # Private peer (load balancer / docker network) is treated as an internal hop too
+    assert client_ip(_req("10.24.217.11", {"x-forwarded-for": "49.36.10.5"})) == "49.36.10.5"
+    # A directly connected public client cannot spoof headers
+    assert client_ip(_req("49.36.10.5", {"x-forwarded-for": "8.8.8.8", "cf-connecting-ip": "8.8.4.4"})) == "49.36.10.5"
+    # Local development without any proxy
+    assert client_ip(_req("127.0.0.1")) == "127.0.0.1"
+    # Garbage headers are ignored
+    assert client_ip(_req("127.0.0.1", {"cf-connecting-ip": "not-an-ip", "x-forwarded-for": "junk"})) == "127.0.0.1"
+
+
+def test_admin_password_rule(capsys):
+    from app.cli import upsert_admin
+    from app.db import SessionLocal
+    db = SessionLocal()
+    assert upsert_admin(db, "short@test.in", "short") is False
+    assert "NOT created" in capsys.readouterr().out
+    db.close()
