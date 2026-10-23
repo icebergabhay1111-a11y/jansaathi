@@ -18,12 +18,22 @@ const OPT: Record<string, string> = {
   student: "Student", farmer: "Farmer", unorganised_worker: "Unorganised / daily-wage worker", salaried: "Salaried employee", self_employed: "Self-employed / small business",
   street_vendor: "Street vendor", artisan: "Artisan / craftsperson", unemployed: "Looking for work", homemaker: "Homemaker", retired: "Retired",
   rural: "Rural", urban: "Urban", female: "Female", male: "Male", other: "Other",
+  general: "General", obc: "OBC", sc: "SC (Scheduled Caste)", st: "ST (Scheduled Tribe)",
   school: "School", undergraduate_regular: "Undergraduate (regular)", postgraduate_regular: "Postgraduate (regular)", diploma: "Diploma", distance: "Distance / correspondence",
 };
 const LABEL_STYLE: Record<string, string> = {
   potential_match: "bg-leaf-50 text-leaf-dark ring-leaf/30", rules_need_verification: "bg-navy-100 text-navy-800 ring-navy-700/20",
   more_info: "bg-ivory-dark text-ink ring-line", period_may_have_closed: "bg-saffron-50 text-saffron-dark ring-saffron/30", appears_ineligible: "bg-red-50 text-red-800 ring-red-200",
 };
+// Income asked as a bracket; we send the bracket's upper limit so "income ≤ ₹X" rules work.
+const INCOME_BRACKETS: { label: string; label_hi: string; value: number }[] = [
+  { label: "Up to ₹1 lakh a year", label_hi: "₹1 लाख/वर्ष तक", value: 100000 },
+  { label: "₹1 – 2.5 lakh", label_hi: "₹1 – 2.5 लाख", value: 250000 },
+  { label: "₹2.5 – 4.5 lakh", label_hi: "₹2.5 – 4.5 लाख", value: 450000 },
+  { label: "₹4.5 – 8 lakh", label_hi: "₹4.5 – 8 लाख", value: 800000 },
+  { label: "₹8 – 18 lakh", label_hi: "₹8 – 18 लाख", value: 1800000 },
+  { label: "More than ₹18 lakh", label_hi: "₹18 लाख से अधिक", value: 99999999 },
+];
 const STORE = "js_elig_v1"; // sessionStorage only — cleared when the tab closes
 
 function Wizard() {
@@ -129,7 +139,13 @@ function Wizard() {
                     <option value="">Select state / UT</option>{meta?.states.map((s) => <option key={s}>{s}</option>)}
                   </select>
                 )}
-                {q.type === "number" && (
+                {q.field === "annual_income" && (
+                  <select id={id} aria-describedby={`${id}-why`} className="input" value={v === undefined ? "" : String(v)} onChange={(e) => setA(q.field, e.target.value === "" ? undefined : Number(e.target.value))}>
+                    <option value="">Prefer not to say</option>
+                    {INCOME_BRACKETS.map((b) => <option key={b.value} value={b.value}>{lang === "hi" ? b.label_hi : b.label}</option>)}
+                  </select>
+                )}
+                {q.type === "number" && q.field !== "annual_income" && (
                   <input id={id} type="number" inputMode="numeric" min={q.min} max={q.max} aria-describedby={`${id}-why${fieldErr[q.field] ? ` ${id}-err` : ""}`} aria-invalid={!!fieldErr[q.field]}
                     className="input" value={v === undefined ? "" : String(v)} onChange={(e) => setA(q.field, e.target.value === "" ? undefined : Number(e.target.value))} />
                 )}

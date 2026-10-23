@@ -5,6 +5,7 @@ import { Gavel, HelpCircle, Search } from "lucide-react";
 import { Empty, ErrorBox, Notice, SkeletonCards, VerificationBadge } from "@/components/ui";
 import { useApp } from "@/lib/providers";
 import { useFetch } from "@/lib/useFetch";
+import { QuickCards } from "@/components/QuickCards";
 import type { Card } from "@/lib/types";
 
 const PROCEDURES = [
@@ -38,7 +39,12 @@ export default function RightsPage() {
         {active && <button type="button" className="btn btn-ghost" onClick={() => { setQ(""); setActive(""); }}>Clear</button>}
       </form>
 
-      <section aria-labelledby="ev" className="mt-10">
+      <section aria-labelledby="qc" className="mt-10">
+        <h2 id="qc" className="font-display text-3xl text-navy-900">Quick help — what to do right now</h2>
+        <div className="mt-4"><QuickCards /></div>
+      </section>
+
+      <section aria-labelledby="ev" className="mt-12">
         <h2 id="ev" className="font-display text-3xl text-navy-900">Everyday questions</h2>
         {guides.loading && <SkeletonCards n={3} />}
         {guides.error && <ErrorBox message={guides.error} onRetry={guides.reload} />}

@@ -13,36 +13,39 @@ from rapidfuzz import fuzz
 
 # Synonym groups: any term in a group expands to the whole group.
 SYNONYMS = [
-    {"scholarship", "scholarships", "छात्रवृत्ति", "स्कॉलरशिप", "vazhippu", "fellowship"},
-    {"pension", "पेंशन", "old age", "retirement", "वृद्धावस्था"},
-    {"farmer", "farmers", "kisan", "किसान", "agriculture", "कृषि", "crop", "फसल"},
-    {"health", "स्वास्थ्य", "hospital", "अस्पताल", "medical", "treatment", "इलाज", "ayushman"},
-    {"house", "housing", "home", "आवास", "घर", "awas", "shelter"},
-    {"ration", "राशन", "food", "भोजन", "anna", "अन्न", "grain"},
-    {"loan", "ऋण", "लोन", "credit", "mudra", "business"},
-    {"insurance", "बीमा", "bima", "cover"},
-    {"certificate", "प्रमाण पत्र", "प्रमाणपत्र", "praman"},
-    {"complaint", "grievance", "शिकायत", "problem", "समस्या"},
-    {"rights", "right", "अधिकार", "adhikar"},
-    {"arrest", "गिरफ्तारी", "police", "पुलिस", "detention", "custody", "हिरासत"},
+    {"scholarship", "scholarships", "छात्रवृत्ति", "स्कॉलरशिप", "vazhippu", "fellowship", "உதவித்தொகை", "கல்வி உதவித்தொகை"},
+    {"pension", "पेंशन", "old age", "retirement", "वृद्धावस्था", "ஓய்வூதியம்", "முதியோர்"},
+    {"farmer", "farmers", "kisan", "किसान", "agriculture", "कृषि", "crop", "फसल", "விவசாயி", "விவசாயம்", "பயிர்"},
+    {"health", "स्वास्थ्य", "hospital", "अस्पताल", "medical", "treatment", "इलाज", "ayushman", "மருத்துவம்", "மருத்துவமனை", "சுகாதாரம்", "சிகிச்சை"},
+    {"house", "housing", "home", "आवास", "घर", "awas", "shelter", "வீடு", "வீட்டுவசதி"},
+    {"ration", "राशन", "food", "भोजन", "anna", "अन्न", "grain", "ரேஷன்", "உணவு", "அரிசி"},
+    {"loan", "ऋण", "लोन", "credit", "mudra", "business", "கடன்", "தொழில்"},
+    {"insurance", "बीमा", "bima", "cover", "காப்பீடு"},
+    {"certificate", "प्रमाण पत्र", "प्रमाणपत्र", "praman", "சான்றிதழ்"},
+    {"complaint", "grievance", "शिकायत", "problem", "समस्या", "புகார்"},
+    {"rights", "right", "अधिकार", "adhikar", "உரிமை", "உரிமைகள்"},
+    {"arrest", "गिरफ्तारी", "police", "पुलिस", "detention", "custody", "हिरासत", "கைது", "காவல்துறை", "போலீஸ்"},
     {"article", "अनुच्छेद", "anuchhed", "art"},
     {"equality", "समानता", "discrimination", "भेदभाव"},
-    {"education", "शिक्षा", "school", "स्कूल", "college", "student", "छात्र", "विद्यार्थी"},
-    {"job", "employment", "रोज़गार", "रोजगार", "work", "काम", "naukri", "नौकरी", "wage", "मजदूरी"},
-    {"women", "woman", "महिला", "girl", "बेटी", "daughter"},
-    {"lpg", "gas", "गैस", "cylinder", "ujjwala"},
-    {"legal aid", "free lawyer", "विधिक सहायता", "कानूनी सहायता", "lawyer", "वकील"},
-    {"rti", "right to information", "सूचना का अधिकार", "information"},
-    {"birth", "जन्म"}, {"death", "मृत्यु"}, {"income", "आय"},
-    {"voter", "मतदाता", "election", "चुनाव", "vote"},
-    {"passport", "पासपोर्ट"}, {"driving licence", "driving license", "ड्राइविंग लाइसेंस", "dl"},
+    {"education", "शिक्षा", "school", "स्कूल", "college", "student", "छात्र", "विद्यार्थी", "கல்வி", "பள்ளி", "கல்லூரி", "மாணவர்"},
+    {"job", "employment", "रोज़गार", "रोजगार", "work", "काम", "naukri", "नौकरी", "wage", "मजदूरी", "வேலை", "கூலி", "சம்பளம்"},
+    {"women", "woman", "महिला", "girl", "बेटी", "daughter", "பெண்கள்", "பெண்", "மகள்"},
+    {"lpg", "gas", "गैस", "cylinder", "ujjwala", "எரிவாயு", "சிலிண்டர்"},
+    {"legal aid", "free lawyer", "विधिक सहायता", "कानूनी सहायता", "lawyer", "वकील", "சட்ட உதவி", "வழக்கறிஞர்"},
+    {"rti", "right to information", "सूचना का अधिकार", "information", "தகவல் அறியும் உரிமை"},
+    {"birth", "जन्म", "பிறப்பு"}, {"death", "मृत्यु", "இறப்பு"}, {"income", "आय", "வருமானம்"},
+    {"voter", "मतदाता", "election", "चुनाव", "vote", "வாக்காளர்", "தேர்தல்"},
+    {"passport", "पासपोर्ट", "கடவுச்சீட்டு", "பாஸ்போர்ட்"}, {"driving licence", "driving license", "ड्राइविंग लाइसेंस", "dl"},
     {"vendor", "street vendor", "रेहड़ी", "ठेला", "hawker"},
-    {"cyber", "online fraud", "साइबर", "scam", "धोखाधड़ी", "fraud"},
-    {"consumer", "उपभोक्ता", "refund", "defective"},
+    {"cyber", "online fraud", "साइबर", "scam", "धोखाधड़ी", "fraud", "மோசடி", "சைபர்"},
+    {"consumer", "उपभोक्ता", "refund", "defective", "நுகர்வோர்"},
+    {"fir", "first information report", "एफआईआर", "प्राथमिकी", "முதல் தகவல் அறிக்கை", "எஃப்ஐஆர்"},
+    {"aadhaar", "आधार", "ஆதார்", "uidai"},
+    {"office", "कार्यालय", "அலுவலகம்", "csc", "e-sevai", "இ-சேவை", "taluk", "तहसील", "தாலுகா"},
 ]
 
 FIELD_WEIGHTS = {"title": 5.0, "aliases": 4.0, "article": 6.0, "summary": 2.0, "body": 1.0}
-TOKEN_RE = re.compile(r"[\wऀ-ॿ]+", re.UNICODE)
+TOKEN_RE = re.compile(r"[\w\u0900-\u097F\u0B80-\u0BFF]+", re.UNICODE)  # Latin, Devanagari, Tamil (incl. vowel signs)
 
 
 def normalize(text: str) -> str:

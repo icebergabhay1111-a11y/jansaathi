@@ -8,8 +8,10 @@
 - Hindi content is explanatory translation of summaries and constitutional explainers; full scheme detail pages are English with Hindi names/summaries.
 
 ## Product
-- Only English and Hindi. Architecture supports more (`i18n-dict.ts`, `*_hi` fields) but no other language is implemented.
-- Reminders are displayed in the dashboard only — no email/SMS/push delivery.
+- Interface and reviewed content: English and Hindi only. Tamil works for voice input and AI answers, but Tamil answers are machine-generated and not reviewed; with AI off, Tamil users get English records.
+- Voice: browser speech recognition is best in Chrome/Edge/Android; other browsers use Gemini transcription, which needs `GEMINI_API_KEY`. Without a key, the mic button falls back to an error telling users to type.
+- Office finder relies on OpenStreetMap, where many CSCs and taluk offices are not mapped; public Overpass servers can be slow or rate-limited.
+- Reminders: dashboard banner and .ics calendar export only — no email/SMS/push delivery.
 - No password reset (needs email provider), no 2FA.
 - Application status is what the user enters; there is no government system integration.
 - Admin editing uses a JSON editor rather than a form per field; categories and states are defined in code.

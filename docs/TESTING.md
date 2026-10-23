@@ -3,12 +3,14 @@
 ## Results at build time (23 Oct 2026)
 | Suite | Result |
 |---|---|
-| Backend unit + integration (`backend/tests`), SQLite | **39 passed** |
-| Same suite on PostgreSQL 16 | **39 passed** |
+| Backend unit + integration (`backend/tests`), SQLite | **53 passed** |
+| Same suite on PostgreSQL 16 | **53 passed** |
+| Migration upgrade from the v0.1 schema on PostgreSQL (production path) | OK |
 | Alembic migration + seed on SQLite and PostgreSQL | OK, 0 validation errors |
 | Frontend `tsc`, `next build`, ESLint | Pass (7 lint warnings, 0 errors — see Known limitations) |
 | Browser journeys (`e2e/journeys.py`, Playwright/Chromium) | **8 / 8 passed** |
-| Mobile 390px overflow + page-error check, 15 pages | **15 / 15 passed** |
+| Feature tests (`e2e/features_v2.py`): eligibility brackets/category, voice ×2, checklist, tracker, quick cards/templates, office finder ×2 | **8 / 8 passed** |
+| Mobile 390px overflow + page-error check, 18 pages | **18 / 18 passed** |
 
 ## Coverage of required journeys
 | Journey | Test |
@@ -27,6 +29,9 @@
 Also: eligibility rule ops, jurisdiction, labels never say "eligible", relevant-question selection, sensitive questions optional, freshness/date logic, bilingual + fuzzy search, official-URL validation, every seed record validated, no unverified amounts, CSRF header, password hashing, export/delete, import-as-draft, review queue, Gemini adapter (mocked HTTP).
 
 ## Not tested (honest list)
+- Voice input with a real microphone and real speech (tests use simulated speech recognition and a mocked transcription response).
+- The live OpenStreetMap / Overpass and Nominatim services (mocked in tests; not reachable from the build environment).
+- Real Tamil answer quality from Gemini.
 - **Live Gemini API** — no key was available; the adapter is tested with mocked HTTP responses only.
 - Journey E through the **browser** admin UI (tested at API level only).
 - Screen-reader testing with NVDA/TalkBack; formal WCAG audit (only structural checks: labels, roles, focus styles, skip link).

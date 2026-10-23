@@ -38,6 +38,9 @@
 | Eligibility answers | Kept in sessionStorage; sent only to compute results; not stored server-side |
 | Assistant | No server-side conversation storage; opt-in history in the user's browser only. When Gemini is configured, the question and retrieved public records are sent to Google — disclosed in the privacy notice |
 | Reports | Stored without user identity |
+| Voice | Browser speech API, or audio sent to Gemini only for transcription (≤ ~2 MB, rate-limited); never stored by JanSaathi |
+| Location | Office finder sends coordinates from the browser straight to OpenStreetMap (Overpass/Nominatim); never sent to JanSaathi's server. `Permissions-Policy` allows microphone and geolocation for this site only |
+| Social category | Optional, explained, used only in the request that computes results; never stored |
 | Export & deletion | Dashboard → "Download my data" / "Delete my account" (cascade deletes saved items and reminders) — tested |
 | Logs | Method, path, status, duration, request ID. Query strings are not logged by the app middleware |
 | Not official | Footer, About page, AI disclaimer and API description state independence |

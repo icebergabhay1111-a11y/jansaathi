@@ -6,6 +6,7 @@ import { Bot, Copy, Download, ExternalLink, Flag, Plus, Send, ShieldCheck, Trash
 import { api } from "@/lib/api";
 import { useApp } from "@/lib/providers";
 import { Notice, VerificationBadge } from "@/components/ui";
+import { VoiceButton, type VoiceLang } from "@/components/VoiceButton";
 import { ReportForm } from "@/components/ItemActions";
 import type { VStatus } from "@/lib/types";
 
@@ -15,9 +16,10 @@ type Convo = { id: string; title: string; messages: Msg[]; at: number };
 
 const KEY = "js_chats_v1";
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
-const SUGGESTED = {
-  en: ["I am a student from Uttar Pradesh. What scholarships should I investigate?", "My pension has been pending for months. What should I do?", "How can I apply for an income certificate?", "What are my rights if I am arrested?", "How do I file an RTI?"],
+const SUGGESTED: Record<VoiceLang, string[]> = {
+  en: ["I am a student from Uttar Pradesh. What scholarships should I investigate?", "My pension has been pending for months. What should I do?", "How can I apply for an income certificate?", "The police refused to register my FIR. What can I do?", "How do I file an RTI?"],
   hi: ["अनुच्छेद 21 को आसान हिन्दी में समझाइए", "वृद्धावस्था पेंशन कैसे मिलेगी?", "राशन कार्ड न मिलने पर शिकायत कहाँ करें?", "मुझे मुफ़्त कानूनी सहायता कैसे मिलेगी?"],
+  ta: ["முதியோர் ஓய்வூதியம் பெறுவது எப்படி?", "கல்லூரி மாணவர்களுக்கான உதவித்தொகை என்ன?", "காவல் நிலையத்தில் புகார் ஏற்க மறுத்தால் என்ன செய்வது?", "இலவச சட்ட உதவி எப்படிப் பெறுவது?"],
 };
 
 // Minimal, safe renderer: React escapes text; we only interpret **bold**, bullet lines and [n] citations.
@@ -48,6 +50,9 @@ function Rich({ text, sources }: { text: string; sources?: Src[] }) {
 
 function AskInner() {
   const { t, lang, setLang } = useApp();
+  // Answer + voice language. Tamil is available for AI answers and voice even though the interface is English/Hindi.
+  const [alang, setAlang] = useState<VoiceLang>(lang);
+  const [interim, setInterim] = useState("");
   const sp = useSearchParams();
   const router = useRouter();
   const [convos, setConvos] = useState<Convo[]>([]);
@@ -74,7 +79,7 @@ function AskInner() {
   }, [keep, convos, current]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [current.messages.length, busy]);
 
-  async function send(text: string) {
+  async function send(text: string, langOverride?: VoiceLang) {
     const q = text.trim();
     if (!q || busy) return;
     const history = current.messages.filter((m) => !m.error).map((m) => ({ role: m.role, content: m.content }));
@@ -82,7 +87,7 @@ function AskInner() {
     setCurrent(next); setInput(""); setBusy(true);
     try {
       const r = await api<{ answer: string; sources: Src[]; mode: "ai" | "fallback"; mode_reason: string | null; disclaimer: string; followups: string[] }>(
-        "/assistant/ask", { method: "POST", json: { question: q, history, lang } });
+        "/assistant/ask", { method: "POST", json: { question: q, history, lang: langOverride || alang } });
       setCurrent((c) => ({ ...c, messages: [...c.messages, { role: "assistant", content: r.answer, sources: r.sources, mode: r.mode, mode_reason: r.mode_reason, disclaimer: r.disclaimer, followups: r.followups }] }));
     } catch (e) {
       setCurrent((c) => ({ ...c, messages: [...c.messages, { role: "assistant", content: e instanceof Error ? e.message : "Something went wrong.", error: true }] }));
@@ -91,7 +96,10 @@ function AskInner() {
 
   useEffect(() => {
     const q = sp.get("q");
-    if (q && !asked.current) { asked.current = true; send(q); }
+    const ql = sp.get("lang");
+    const qlang = ql === "ta" || ql === "hi" || ql === "en" ? (ql as VoiceLang) : undefined;
+    if (qlang) setAlang(qlang);
+    if (q && !asked.current) { asked.current = true; send(q, qlang); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sp]);
 
@@ -132,14 +140,17 @@ function AskInner() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 id="ask-h" className="font-display text-3xl text-navy-900">{t("nav_ask")}</h1>
           <div className="flex items-center gap-2 text-sm">
-            <label htmlFor="alang" className="font-semibold">Answer in</label>
-            <select id="alang" className="input !min-h-10 w-auto" value={lang} onChange={(e) => setLang(e.target.value as "en" | "hi")}><option value="en">English</option><option value="hi">हिन्दी</option></select>
+            <label htmlFor="alang" className="font-semibold">Speak &amp; answer in</label>
+            <select id="alang" className="input !min-h-10 w-auto" value={alang} onChange={(e) => { const v = e.target.value as VoiceLang; setAlang(v); if (v !== "ta" && v !== lang) setLang(v); }}>
+              <option value="en">English</option><option value="hi">हिन्दी</option><option value="ta">தமிழ் (Tamil — AI)</option>
+            </select>
             {current.messages.length > 0 && <>
               <button onClick={exportChat} className="btn btn-ghost !min-h-10 !px-3" aria-label="Download conversation"><Download size={16} aria-hidden /></button>
               <button onClick={() => setCurrent({ ...current, messages: [] })} className="btn btn-ghost !min-h-10 !px-3" aria-label="Clear conversation"><Trash2 size={16} aria-hidden /></button>
             </>}
           </div>
         </div>
+        {alang === "ta" && <div className="mt-3"><Notice tone="warn">தமிழ் பதில்கள் AI மூலம் உருவாக்கப்படுகின்றன; அவை மனிதரால் சரிபார்க்கப்படவில்லை. Tamil answers are AI-generated from English records and not reviewed by a person — check the official links. If the AI service is off, records are shown in English.</Notice></div>}
         <div className="mt-3"><Notice>Answers come only from JanSaathi&apos;s published records, with sources. Not legal advice, not an official decision. Don&apos;t share Aadhaar, bank details or OTPs.</Notice></div>
 
         <div className="mt-4 flex-1 space-y-4" aria-live="polite">
@@ -147,7 +158,7 @@ function AskInner() {
             <div className="card p-6">
               <p className="font-display text-xl text-navy-900">Try asking</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                {SUGGESTED[lang].map((s) => <button key={s} onClick={() => send(s)} className="rounded-full border border-line bg-ivory px-3 py-1.5 text-left text-sm hover:border-navy-700">{s}</button>)}
+                {SUGGESTED[alang].map((s) => <button key={s} onClick={() => send(s)} className="rounded-full border border-line bg-ivory px-3 py-1.5 text-left text-sm hover:border-navy-700">{s}</button>)}
               </div>
             </div>
           )}
@@ -198,8 +209,9 @@ function AskInner() {
         </div>
 
         <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="sticky bottom-0 mt-4 flex gap-2 bg-ivory py-3">
+          <VoiceButton lang={alang} onInterim={(x) => setInterim(x)} onText={(x) => { setInterim(""); setInput((cur) => (cur ? `${cur} ${x}` : x)); }} className="self-center" />
           <label htmlFor="ask-in" className="sr-only">{t("ask_placeholder")}</label>
-          <textarea id="ask-in" rows={2} className="input resize-none" maxLength={1500} value={input} onChange={(e) => setInput(e.target.value)} placeholder={t("ask_placeholder")}
+          <textarea id="ask-in" rows={2} className="input resize-none" maxLength={1500} value={interim || input} onChange={(e) => setInput(e.target.value)} placeholder={alang === "ta" ? "தட்டச்சு செய்யவும் அல்லது 🎤 அழுத்திப் பேசவும்…" : alang === "hi" ? "लिखें या 🎤 दबाकर बोलें…" : "Type, or tap 🎤 and speak…"}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }} />
           <button className="btn btn-saffron" disabled={busy || !input.trim()}><Send size={16} aria-hidden /><span className="sr-only sm:not-sr-only">{t("send")}</span></button>
         </form>

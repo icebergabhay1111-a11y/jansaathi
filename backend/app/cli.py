@@ -1,6 +1,6 @@
 """Management commands.
 
-  python -m app.cli bootstrap                 # deploy start-up: migrate + seed empty DB + optional admin (one process)
+  python -m app.cli bootstrap                 # deploy start-up: migrate + sync seed records + optional admin (one process)
   python -m app.cli seed                      # import/refresh the curated seed records
   python -m app.cli seed-if-empty             # seed only a fresh database
   python -m app.cli create-admin EMAIL        # create/promote an admin (prompts for password)
@@ -20,7 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .db import Base, SessionLocal, engine
-from .importer import seed_all
+from .importer import seed_all, sync_seed
 from .models import Scheme, User
 from .security import hash_password
 
@@ -70,7 +70,7 @@ def main(argv: list[str]) -> int:
     db = SessionLocal()
     try:
         if cmd == "bootstrap":
-            seed_if_empty(db)
+            print("seed sync:", json.dumps(sync_seed(db)))
             email, pw = os.getenv("ADMIN_EMAIL", ""), os.getenv("ADMIN_PASSWORD", "")
             if email and pw:
                 upsert_admin(db, email, pw)  # a bad password is reported but never blocks start-up

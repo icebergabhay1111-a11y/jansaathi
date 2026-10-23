@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, BookOpenCheck, ClipboardCheck, FileSearch, Landmark, MessageCircleQuestion, Scale, ShieldCheck } from "lucide-react";
+import { ArrowRight, BookOpenCheck, ClipboardCheck, FileSearch, Landmark, MapPin, MessageCircleQuestion, Mic, Scale, ShieldCheck } from "lucide-react";
 import { HomeSearch } from "@/components/HomeSearch";
+import { QuickCards } from "@/components/QuickCards";
 import { serverGet, serverLang } from "@/lib/server";
 import { t } from "@/lib/i18n-dict";
 import type { Card, Meta, Paged } from "@/lib/types";
@@ -66,6 +67,27 @@ export default async function Home() {
               </Link>
             ))}
           </div>
+        </section>
+
+        <section aria-labelledby="qh">
+          <div className="flex items-end justify-between gap-4">
+            <h2 id="qh" className="font-display text-3xl text-navy-900">{lang === "hi" ? "तुरंत मदद — अपने अधिकार जानें" : "Know your rights — quick help"}</h2>
+            <Link href="/rights" className="font-semibold text-navy-700 hover:underline">{tr("view_all")} →</Link>
+          </div>
+          <div className="mt-5"><QuickCards compact /></div>
+        </section>
+
+        <section aria-labelledby="near" className="grid gap-4 md:grid-cols-2">
+          <Link href="/offices" className="card card-hover flex items-start gap-4 p-6">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-leaf-50 text-leaf-dark"><MapPin size={22} aria-hidden /></span>
+            <span><span id="near" className="block font-display text-2xl text-navy-900">{lang === "hi" ? "नज़दीकी कार्यालय खोजें" : "Find a nearby office"}</span>
+              <span className="text-muted">{lang === "hi" ? "CSC, ई-सेवा केंद्र, तहसील, पंचायत और डाकघर — दूरी और रास्ते के साथ।" : "CSC, e-Sevai centres, taluk/tehsil, panchayat and post offices — with distance and directions."}</span></span>
+          </Link>
+          <Link href="/ask" className="card card-hover flex items-start gap-4 p-6">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-saffron-50 text-saffron-dark"><Mic size={22} aria-hidden /></span>
+            <span><span className="block font-display text-2xl text-navy-900">{lang === "hi" ? "बोलकर पूछें" : "Ask by voice"}</span>
+              <span className="text-muted">{lang === "hi" ? "हिन्दी, तमिल या अंग्रेज़ी में बोलें — टाइप करने की ज़रूरत नहीं।" : "Speak in Hindi, Tamil or English — no typing needed."}</span></span>
+          </Link>
         </section>
 
         <section aria-labelledby="cat">

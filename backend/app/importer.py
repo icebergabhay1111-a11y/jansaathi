@@ -60,7 +60,10 @@ def validate_record(kind: str, data: dict) -> list[str]:
         if data.get("benefit_amount") and data.get("verification_status") == "needs_verification":
             errs.append("benefit_amount must be empty until the scheme is verified/reviewed")
         for r in data.get("eligibility_rules") or []:
-            if not {"field", "op", "label"} <= set(r):
+            if r.get("op") == "any":
+                if not r.get("label") or not r.get("rules") or not all({"field", "op"} <= set(x) for x in r["rules"]):
+                    errs.append(f"bad 'any' eligibility rule {r}")
+            elif not {"field", "op", "label"} <= set(r):
                 errs.append(f"bad eligibility rule {r}")
     if data.get("verification_status") in ("verified", "reviewed") and not data.get("last_verified"):
         errs.append("verified/reviewed records need last_verified")
@@ -125,3 +128,52 @@ def seed_all(db: Session) -> dict:
         run = import_records(db, kind, recs, actor="seed")
         result[kind] = {"created": run.created, "updated": run.updated, "errors": run.errors}
     return result
+
+
+def sync_seed(db: Session) -> dict:
+    """Bring a live database up to date with the curated seed records.
+
+    - new seed records are inserted (published, with their verification labels)
+    - records last written by the seed are refreshed when the seed content changed
+    - records edited by a person (updated_by != "seed") are never touched
+    """
+    from .seed.guides import GUIDES
+    from .seed.rights import RIGHTS
+    from .seed.schemes import SCHEMES
+    from .seed.services import SERVICES
+
+    summary = {}
+    for kind, recs in (("scheme", SCHEMES), ("right", RIGHTS), ("guide", GUIDES), ("service", SERVICES)):
+        Model = CONTENT_MODELS[kind]
+        cols = {c.name for c in Model.__table__.columns}
+        added = refreshed = kept = 0
+        errors = []
+        for raw in recs:
+            raw = {"status": "published", "review_interval_days": REVIEW_INTERVALS[kind], **raw}
+            errs = validate_record(kind, raw)
+            if errs:
+                errors.append({"slug": raw.get("slug"), "errors": errs})
+                continue
+            data = {k: v for k, v in _coerce(raw).items() if k in cols and k != "id"}
+            obj = db.scalar(select(Model).where(Model.slug == data["slug"]))
+            if obj is None:
+                obj = Model(**data, version=1, updated_by="seed")
+                db.add(obj)
+                added += 1
+            elif obj.updated_by not in (None, "seed"):
+                kept += 1
+                continue
+            else:
+                changed = [k for k, v in data.items() if k != "status" and getattr(obj, k) != v]
+                if not changed:
+                    continue
+                for k in changed:
+                    setattr(obj, k, data[k])
+                obj.version = (obj.version or 1) + 1
+                obj.updated_by = "seed"
+                refreshed += 1
+            db.flush()
+            db.add(RecordVersion(entity_type=kind, entity_slug=obj.slug, version=obj.version, snapshot=snapshot(obj), changed_by="seed", note="seed sync"))
+        summary[kind] = {"added": added, "refreshed": refreshed, "kept_human_edits": kept, "errors": errors}
+    db.commit()
+    return summary

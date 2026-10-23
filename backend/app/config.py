@@ -45,7 +45,9 @@ class Settings:
         # AI provider. Only "gemini" is implemented; anything else (or no key) = deterministic fallback.
         self.ai_provider = os.getenv("AI_PROVIDER", "gemini")
         self.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
-        self.gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        self.gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+        # tried in order if the main model is not available to this API key
+        self.gemini_fallback_models = [m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.6-flash,gemini-3.5-flash-lite,gemini-2.5-flash").split(",") if m.strip()]
         self.ai_timeout_seconds = float(os.getenv("AI_TIMEOUT_SECONDS", "25"))
 
         self.rate_limit_chat_per_min = int(os.getenv("RATE_LIMIT_CHAT_PER_MIN", "12"))

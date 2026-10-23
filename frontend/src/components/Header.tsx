@@ -9,7 +9,7 @@ import { Logo } from "./Logo";
 
 const NAV: [string, Key][] = [
   ["/", "nav_home"], ["/schemes", "nav_schemes"], ["/rights", "nav_rights"], ["/services", "nav_services"],
-  ["/complaints", "nav_complaints"], ["/ask", "nav_ask"], ["/dashboard", "nav_dashboard"],
+  ["/complaints", "nav_complaints"], ["/ask", "nav_ask"], ["/offices", "nav_offices"], ["/dashboard", "nav_dashboard"],
 ];
 
 export function Header() {

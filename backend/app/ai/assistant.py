@@ -34,7 +34,27 @@ STRICT RULES:
 - Reply in {language}.
 """
 
-LANG_NAMES = {"en": "English", "hi": "Hindi (Devanagari script, simple everyday words)"}
+LANG_NAMES = {"en": "English", "hi": "Hindi (Devanagari script, simple everyday words)",
+              "ta": "Tamil (Tamil script, simple everyday words)"}
+DISCLAIMER_TA = ("ஜன்சாதி ஒரு சுயாதீன தகவல் சேவை; அரசு அமைப்பு அல்ல. இது பொதுவான தகவல் மட்டுமே — சட்ட ஆலோசனையோ அதிகாரப்பூர்வ முடிவோ அல்ல. "
+                 "எதையும் செய்வதற்கு முன் அதிகாரப்பூர்வ இணையதளத்தில் உறுதிப்படுத்தவும்.")
+TAMIL_RE = re.compile(r"[\u0B80-\u0BFF]")
+DEVANAGARI_RE = re.compile(r"[\u0900-\u097F]")
+
+TRANSLATE_SYSTEM = ("Translate the user's question into a short list of English search keywords about Indian government "
+                    "schemes, rights or services (e.g. 'old age pension Tamil Nadu documents'). Reply with the keywords only.")
+
+
+def search_query_for(provider: AIProvider | None, question: str) -> tuple[str, str | None]:
+    """Retrieval works on English/Hindi keywords. For Tamil (or any non-Latin, non-Devanagari) questions,
+    ask the AI for English keywords; the original question is still what the AI answers."""
+    if provider is None or not (TAMIL_RE.search(question) or (not question.isascii() and not DEVANAGARI_RE.search(question))):
+        return question, None
+    try:
+        kw = provider.generate(TRANSLATE_SYSTEM, [{"role": "user", "content": question}]).strip().splitlines()[0][:300]
+        return f"{question} {kw}", kw
+    except AIUnavailable:
+        return question, None
 
 
 def _record_text(i: int, kind: str, o) -> tuple[str, dict]:
@@ -73,20 +93,21 @@ def suggested_followups(hits: list[dict], lang: str) -> list[str]:
     kinds = {h["kind"] for h in hits}
     out = []
     if "scheme" in kinds:
-        out.append("Check my eligibility step by step" if lang == "en" else "मेरी पात्रता चरण-दर-चरण जाँचें")
+        out.append({"en": "Check my eligibility step by step", "hi": "मेरी पात्रता चरण-दर-चरण जाँचें", "ta": "என் தகுதியைப் படிப்படியாகச் சரிபார்க்கவும்"}[lang])
     if "right" in kinds or "guide" in kinds:
-        out.append("How do I get free legal aid?" if lang == "en" else "मुझे मुफ़्त कानूनी सहायता कैसे मिलेगी?")
-    out.append("Which documents will I need?" if lang == "en" else "मुझे कौन-से दस्तावेज़ चाहिए होंगे?")
+        out.append({"en": "How do I get free legal aid?", "hi": "मुझे मुफ़्त कानूनी सहायता कैसे मिलेगी?", "ta": "இலவச சட்ட உதவி எப்படிப் பெறுவது?"}[lang])
+    out.append({"en": "Which documents will I need?", "hi": "मुझे कौन-से दस्तावेज़ चाहिए होंगे?", "ta": "எனக்கு என்ன ஆவணங்கள் தேவை?"}[lang])
     return out[:3]
 
 
 def fallback_answer(hits: list[dict], metas: list[dict], lang: str, reason: str) -> str:
     if not hits:
-        return ("I could not find this in JanSaathi's records. Try different words, browse Schemes / Services, or check the National Government Services Portal (https://services.india.gov.in)."
-                if lang == "en" else
-                "मुझे यह जनसाथी के रिकॉर्ड में नहीं मिला। अलग शब्दों में खोजें, योजनाएँ/सेवाएँ देखें, या राष्ट्रीय सरकारी सेवा पोर्टल (https://services.india.gov.in) देखें।")
-    head = ("AI explanation is unavailable right now, so here are the most relevant records from JanSaathi's knowledge base:"
-            if lang == "en" else "अभी AI व्याख्या उपलब्ध नहीं है, इसलिए जनसाथी के सबसे प्रासंगिक रिकॉर्ड दिए गए हैं:")
+        return {"en": "I could not find this in JanSaathi's records. Try different words, browse Schemes / Services, or check the National Government Services Portal (https://services.india.gov.in).",
+                "hi": "मुझे यह जनसाथी के रिकॉर्ड में नहीं मिला। अलग शब्दों में खोजें, योजनाएँ/सेवाएँ देखें, या राष्ट्रीय सरकारी सेवा पोर्टल (https://services.india.gov.in) देखें।",
+                "ta": "இதை ஜன்சாதி பதிவுகளில் கண்டுபிடிக்க முடியவில்லை. வேறு சொற்களில் தேடவும் அல்லது தேசிய அரசு சேவைகள் இணையதளத்தைப் (https://services.india.gov.in) பார்க்கவும். (I could not find this in JanSaathi's records.)"}[lang]
+    head = {"en": "AI explanation is unavailable right now, so here are the most relevant records from JanSaathi's knowledge base:",
+            "hi": "अभी AI व्याख्या उपलब्ध नहीं है, इसलिए जनसाथी के सबसे प्रासंगिक रिकॉर्ड दिए गए हैं:",
+            "ta": "AI விளக்கம் இப்போது கிடைக்கவில்லை. தொடர்புடைய பதிவுகள் கீழே ஆங்கிலத்தில் உள்ளன. (AI is unavailable — records are shown in English.)"}[lang]
     lines = [head, ""]
     for h, m in zip(hits, metas):
         o = h["obj"]
@@ -102,7 +123,8 @@ def answer(provider: AIProvider | None, collections: dict, question: str, histor
     lang = lang if lang in LANG_NAMES else "en"
     # retrieve on the question plus the last user turn for follow-ups like "what documents?"
     prev = next((m["content"] for m in reversed(history) if m["role"] == "user"), "")
-    hits = retrieve(collections, f"{question} {prev}" if len(question.split()) < 5 and prev else question)
+    query, translated = search_query_for(provider, question)
+    hits = retrieve(collections, f"{query} {prev}" if len(question.split()) < 5 and prev else query)
     blocks, metas = zip(*[_record_text(i + 1, h["kind"], h["obj"]) for i, h in enumerate(hits)]) if hits else ((), ())
     metas = list(metas)
     mode, reason, text = "fallback", None, None
@@ -135,5 +157,6 @@ def answer(provider: AIProvider | None, collections: dict, question: str, histor
         "sources": metas,
         "found_sources": bool(hits),
         "followups": suggested_followups(list(hits), lang),
-        "disclaimer": DISCLAIMER_HI if lang == "hi" else DISCLAIMER,
+        "disclaimer": {"hi": DISCLAIMER_HI, "ta": DISCLAIMER_TA}.get(lang, DISCLAIMER),
+        "search_keywords": translated,
     }

@@ -43,7 +43,7 @@ async def a_student(page):  # Journey A
     assert await page.get_by_label("What is your age?").count() == 0  # only relevant questions are asked
     await page.get_by_label("What best describes").select_option("student")
     await page.get_by_label("What are you studying?").select_option("undergraduate_regular")
-    await page.get_by_label("Approximate annual household income").fill("300000")
+    await page.get_by_label("Approximate annual household income").select_option(label="₹2.5 – 4.5 lakh")
     await page.locator("#q-class12_top20").get_by_text("Yes", exact=True).click()
     await page.locator("#q-other_scholarship").get_by_text("No", exact=True).click()
     await page.get_by_role("button", name="See what may apply").click()

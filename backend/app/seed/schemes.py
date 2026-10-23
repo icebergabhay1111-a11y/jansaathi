@@ -505,7 +505,9 @@ SCHEMES = [
         "eligibility_text": ["Entrepreneur from SC/ST community and/or a woman, aged 18+", "Greenfield (first-time) enterprise in manufacturing, services, trading or agri-allied activities"],
         "eligibility_rules": [
             {"field": "age", "op": "gte", "value": 18, "label": "Aged 18 or above"},
-            {"field": "standup_category", "op": "manual", "label": "Applicant should be a woman and/or from an SC/ST community (JanSaathi does not ask your caste — the bank verifies this)"},
+            {"op": "any", "label": "Applicant is a woman and/or from an SC/ST community (the bank verifies this)", "rules": [
+                {"field": "gender", "op": "eq", "value": "female"},
+                {"field": "social_category", "op": "in", "value": ["sc", "st"]}]},
         ],
         "documents": ["As required by the lending bank"],
         "benefit_type": "Bank loan",

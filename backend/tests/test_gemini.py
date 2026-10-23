@@ -21,7 +21,7 @@ def test_gemini_parses_text_and_keeps_key_in_header(monkeypatch):
         return R(200, {"candidates": [{"content": {"parts": [{"text": "Answer [1]"}]}}]})
 
     monkeypatch.setattr(httpx, "post", fake_post)
-    out = GeminiProvider("k-123", "gemini-2.5-flash", 5).generate("sys", [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "x"}])
+    out = GeminiProvider("k-123", "gemini-2.5-flash", 5, []).generate("sys", [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "x"}])
     assert out == "Answer [1]"
     assert "k-123" not in seen["url"] and seen["headers"]["x-goog-api-key"] == "k-123"
     assert seen["body"]["contents"][1]["role"] == "model"

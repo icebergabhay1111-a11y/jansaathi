@@ -26,6 +26,14 @@ Status key: ✅ implemented and tested · 🟡 implemented, partially tested / l
 | Optional accounts, saved items, user-entered status, document checklist, reminders, export, delete | ✅ | Account journey |
 | Offline banner; PWA manifest | 🟡 | No service worker / offline cache (deliberate — avoids showing stale data as fresh) |
 | Emergency helplines (112, 1930, 1098, 181, 15100) | ✅ | |
+| Income asked as brackets; optional social category (SC/ST/OBC/General) with "why we ask"; any-of rules (e.g. woman **or** SC/ST) | ✅ | Category never required, never stored |
+| Voice input — Hindi, Tamil, English (Ask page, homepage search) | ✅ | Browser speech API (Chrome/Edge/Android) or Gemini transcription fallback; tested with simulated speech + mocked Gemini — **not tested with a real microphone or live Gemini** |
+| Tamil AI answers + Tamil question retrieval (AI keyword translation, Tamil synonyms when AI is off) | 🟡 | Tamil answers are AI-generated, labelled, not human-reviewed |
+| Per-scheme document checklist with "where to get it" + links, on-device ticks, print | ✅ | 16 document types mapped |
+| Application tracker: applied-on date, acknowledgement number, per-scheme reminders, "coming up" banner, Add-to-calendar (.ics) | ✅ | |
+| Know-your-rights quick cards (FIR refused, RTI, consumer, arrest, cyber fraud) | ✅ | |
+| Template letters: FIR refused → SP (BNSS s.173(4)), consumer complaint to company, RTI, grievance | ✅ | Drafts only, never submitted |
+| Nearby office finder (CSC / e-Sevai, taluk/tehsil, panchayat, municipal, post office) by location or town/PIN | 🟡 | OpenStreetMap data — incomplete coverage; tested with mocked map responses |
 
 ## Admin features
 | Feature | Status |
@@ -49,7 +57,8 @@ Status key: ✅ implemented and tested · 🟡 implemented, partially tested / l
 |---|---|---|
 | Gemini AI | Provider adapter, retries to fallback, prompt grounding, tests with mocked HTTP | `GEMINI_API_KEY`. **Not tested against the live Gemini API** in this build (no key available) |
 | Other AI providers | `AIProvider` interface | An adapter class + key |
-| Email (password reset, reminder emails) | Reminders stored and shown in dashboard | SMTP/email service; password reset **not implemented** |
+| Email / SMS reminders, password reset | Reminders in dashboard + .ics calendar export (phone alerts without SMS) | SMTP or SMS provider; password reset **not implemented** |
+| Official CSC / office directory | OpenStreetMap search + links to csc.gov.in, TN e-Sevai, services.india.gov.in | An official, licensed office dataset/API |
 | SMS / push notifications | — | Provider (e.g. SMS gateway) |
 | myScheme / NSP / UMANG / API Setu data feeds | Validated import endpoint | Official API access & terms approval |
 | Government application-status sync | Explicitly not implied; status is user-entered | Authorised government integration |

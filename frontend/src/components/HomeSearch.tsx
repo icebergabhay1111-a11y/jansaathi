@@ -3,12 +3,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Search } from "lucide-react";
 import { useApp } from "@/lib/providers";
+import { VOICE_LANGS, VoiceButton, type VoiceLang } from "./VoiceButton";
 
 const EXAMPLES = ["scholarship for college", "old age pension", "Article 21", "income certificate", "free legal aid", "किसान योजना"];
 
 export function HomeSearch() {
-  const { t } = useApp();
+  const { t, lang } = useApp();
   const [q, setQ] = useState("");
+  const [vlang, setVlang] = useState<VoiceLang>(lang === "hi" ? "hi" : "en");
   const router = useRouter();
   const go = (v: string) => v.trim() && router.push(`/search?q=${encodeURIComponent(v.trim())}`);
   return (
@@ -19,7 +21,14 @@ export function HomeSearch() {
           <Search size={20} className="text-muted" aria-hidden />
           <input id="home-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search_placeholder")} className="h-12 w-full bg-transparent text-base text-ink outline-none placeholder:text-muted" autoComplete="off" />
         </div>
-        <button className="btn btn-saffron px-6">{t("search")}</button>
+        <div className="flex items-center gap-2 px-1 sm:px-0">
+          <label htmlFor="vlang" className="sr-only">Voice language</label>
+          <select id="vlang" value={vlang} onChange={(e) => setVlang(e.target.value as VoiceLang)} className="h-11 rounded-xl border border-line bg-ivory px-2 text-sm font-semibold text-navy-900">
+            {VOICE_LANGS.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+          </select>
+          <VoiceButton lang={vlang} onInterim={setQ} onText={(x) => { setQ(x); vlang === "ta" ? router.push(`/ask?q=${encodeURIComponent(x)}&lang=ta`) : go(x); }} />
+          <button className="btn btn-saffron flex-1 px-6 sm:flex-none">{t("search")}</button>
+        </div>
       </form>
       <div className="mt-3 flex flex-wrap gap-2">
         {EXAMPLES.map((e) => (

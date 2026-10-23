@@ -86,7 +86,8 @@ def delete_account(response: Response, user: User = Depends(require_user), db: S
 @router.get("/me/export")
 def export(user: User = Depends(require_user), db: Session = Depends(get_db)):
     return {"account": _me(user), "created_at": user.created_at.isoformat(),
-            "saved": [{"item_type": s.item_type, "item_slug": s.item_slug, "my_status": s.my_status, "notes": s.notes} for s in user.saved],
+            "saved": [{"item_type": s.item_type, "item_slug": s.item_slug, "my_status": s.my_status, "notes": s.notes,
+                       "applied_on": s.applied_on.isoformat() if s.applied_on else None, "reference_no": s.reference_no} for s in user.saved],
             "reminders": [{"title": r.title, "due_date": r.due_date.isoformat(), "related_slug": r.related_slug, "enabled": r.enabled} for r in user.reminders]}
 
 
@@ -99,6 +100,8 @@ class SaveIn(BaseModel):
     item_slug: str = Field(max_length=120)
     my_status: str = "interested"
     notes: str | None = Field(default=None, max_length=1000)
+    applied_on: date | None = None
+    reference_no: str | None = Field(default=None, max_length=80)
 
     @field_validator("my_status")
     @classmethod
@@ -115,8 +118,11 @@ def _saved_view(db: Session, s: SavedItem) -> dict:
     links = {}
     if o is not None:
         links = {k: getattr(o, k) for k in ("apply_url", "info_url", "portal_url") if getattr(o, k, None)}
+    reminders = [{"id": r.id, "title": r.title, "due_date": r.due_date.isoformat(), "enabled": r.enabled}
+                 for r in db.scalars(select(Reminder).where(Reminder.user_id == s.user_id, Reminder.related_slug == s.item_slug))]
     return {"id": s.id, "item_type": s.item_type, "item_slug": s.item_slug, "title": title or s.item_slug, "my_status": s.my_status,
             "status_source": "user_entered", "notes": s.notes, "documents": getattr(o, "documents", []) if o else [], "links": links,
+            "applied_on": s.applied_on.isoformat() if s.applied_on else None, "reference_no": s.reference_no, "reminders": reminders,
             "closes_on": o.closes_on.isoformat() if o is not None and getattr(o, "closes_on", None) else None,
             "available": bool(o and o.status == "published")}
 
@@ -144,6 +150,9 @@ def save(body: SaveIn, user: User = Depends(require_user), db: Session = Depends
 class SavePatch(BaseModel):
     my_status: str | None = None
     notes: str | None = Field(default=None, max_length=1000)
+    applied_on: date | None = None
+    clear_applied_on: bool = False
+    reference_no: str | None = Field(default=None, max_length=80)
 
 
 @router.patch("/me/saved/{sid}")
@@ -157,6 +166,14 @@ def update_saved(sid: int, body: SavePatch, user: User = Depends(require_user), 
         s.my_status = body.my_status
     if body.notes is not None:
         s.notes = body.notes
+    if body.clear_applied_on:
+        s.applied_on = None
+    elif body.applied_on is not None:
+        if body.applied_on > date.today():
+            raise HTTPException(422, "The application date cannot be in the future.")
+        s.applied_on = body.applied_on
+    if body.reference_no is not None:
+        s.reference_no = body.reference_no.strip() or None
     db.commit()
     return _saved_view(db, s)
 
@@ -187,6 +204,8 @@ def list_reminders(user: User = Depends(require_user)):
 
 @router.post("/me/reminders", status_code=201)
 def add_reminder(body: ReminderIn, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    if body.due_date.year > date.today().year + 10:
+        raise HTTPException(422, "Please choose a date within the next 10 years.")
     r = Reminder(user_id=user.id, **body.model_dump())
     db.add(r)
     db.commit()

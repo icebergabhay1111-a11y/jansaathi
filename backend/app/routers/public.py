@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import math
 
+import base64
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import drafts
+from ..documents import DOCUMENTS, checklist
 from ..ai.assistant import answer
 from ..ai.provider import get_provider
 from ..config import get_settings
@@ -121,7 +124,13 @@ def _get(db: Session, Model, slug: str):
 def get_scheme(slug: str, db: Session = Depends(get_db)):
     s = _get(db, Scheme, slug)
     related = [card("scheme", o) for o in published(db, Scheme) if o.slug != s.slug and set(o.categories) & set(s.categories)][:4]
-    return {**full(s), "related": related}
+    return {**full(s), "related": related, "document_checklist": checklist(s.documents)}
+
+
+@router.get("/documents")
+def documents_registry():
+    """Common documents and where to get each one."""
+    return {"items": [{k: d[k] for k in ("key", "name", "name_hi", "how", "how_hi", "links")} for d in DOCUMENTS]}
 
 
 @router.get("/rights")
@@ -258,7 +267,7 @@ def eligibility_match(body: MatchIn, db: Session = Depends(get_db)):
 class AskIn(BaseModel):
     question: str = Field(min_length=2, max_length=1500)
     history: list[dict] = Field(default_factory=list, max_length=12)
-    lang: str = "en"
+    lang: str = Field(default="en", pattern="^(en|hi|ta)$")
 
 
 @router.post("/assistant/ask")
@@ -266,6 +275,41 @@ def ask(body: AskIn, request: Request, db: Session = Depends(get_db)):
     limiter.check(f"chat:{client_ip(request)}", get_settings().rate_limit_chat_per_min)
     history = [{"role": m.get("role"), "content": str(m.get("content", ""))[:3000]} for m in body.history if m.get("role") in ("user", "assistant")]
     return answer(get_provider(), collections(db), body.question.strip(), history, body.lang)
+
+
+class TranscribeIn(BaseModel):
+    audio_base64: str = Field(min_length=10, max_length=2_800_000)  # ≈2 MB of audio (~60 s of Opus)
+    mime_type: str = Field(pattern=r"^audio/(webm|ogg|mp4|m4a|mpeg|mp3|wav|aac|opus)(;.*)?$")
+    lang: str = Field(default="hi", pattern="^(en|hi|ta)$")
+
+
+LANG_HINT = {"en": "English (Indian accent)", "hi": "Hindi", "ta": "Tamil"}
+
+
+@router.post("/assistant/transcribe")
+def transcribe(body: TranscribeIn, request: Request):
+    """Voice → text with Gemini, for browsers without built-in speech recognition.
+    Audio is sent to the AI provider only to transcribe it and is not stored."""
+    limiter.check(f"voice:{client_ip(request)}", get_settings().rate_limit_chat_per_min)
+    provider = get_provider()
+    if provider is None:
+        raise HTTPException(503, "Voice transcription needs the AI service, which is not configured. Please type your question instead.")
+    try:
+        audio = base64.b64decode(body.audio_base64, validate=True)
+    except ValueError:
+        raise HTTPException(422, "The recording could not be read. Please try again.")
+    if len(audio) < 500:
+        raise HTTPException(422, "The recording is too short. Hold the button and speak, then stop.")
+    mime = body.mime_type.split(";")[0]
+    from ..ai.provider import AIUnavailable
+    try:
+        text = provider.transcribe(audio, mime, LANG_HINT[body.lang])
+    except AIUnavailable as e:
+        raise HTTPException(503, f"Voice input is unavailable right now ({e}). Please type your question.")
+    text = text.strip().strip('"').strip()
+    if not text:
+        raise HTTPException(422, "We could not hear any words. Please try again closer to the microphone.")
+    return {"text": text[:1500], "lang": body.lang}
 
 
 # ---------------- Drafts ----------------
@@ -297,6 +341,44 @@ def draft_rti(body: RTIIn):
 def draft_complaint(body: ComplaintIn):
     return {"draft": drafts.complaint_draft(**body.model_dump()), "submitted": False,
             "next_steps": "Review the draft, then submit it yourself through the official channel listed in the guide (e.g. https://pgportal.gov.in for central government bodies). Keep the acknowledgement number."}
+
+
+class FIRRefusalIn(BaseModel):
+    district: str = Field(min_length=2, max_length=120)
+    police_station: str = Field(min_length=2, max_length=160)
+    incident_date: str = Field(min_length=4, max_length=40)
+    incident_place: str = Field(min_length=2, max_length=200)
+    facts: str = Field(min_length=20, max_length=4000)
+    refusal_details: str = Field(min_length=5, max_length=1500)
+    applicant_name: str = Field(min_length=1, max_length=120)
+    address: str = Field(min_length=5, max_length=400)
+    contact: str = Field(min_length=3, max_length=200)
+
+
+class ConsumerNoticeIn(BaseModel):
+    company: str = Field(min_length=2, max_length=200)
+    company_address: str = Field(default="", max_length=400)
+    product: str = Field(min_length=2, max_length=200)
+    purchase_date: str = Field(min_length=4, max_length=40)
+    order_ref: str = Field(default="", max_length=120)
+    amount: str = Field(default="", max_length=40)
+    problem: str = Field(min_length=20, max_length=4000)
+    relief: str = Field(min_length=5, max_length=1000)
+    days: int = Field(default=15, ge=7, le=45)
+    applicant_name: str = Field(min_length=1, max_length=120)
+    contact: str = Field(min_length=3, max_length=200)
+
+
+@router.post("/drafts/fir-refusal")
+def draft_fir_refusal(body: FIRRefusalIn):
+    return {"draft": drafts.fir_refusal_draft(**body.model_dump()), "submitted": False,
+            "next_steps": "Print and sign it, keep a copy, and send it to the Superintendent of Police by registered post (keep the receipt). If the SP does not act, a Magistrate can be approached under BNSS Section 175(3) — free legal aid: 15100."}
+
+
+@router.post("/drafts/consumer-notice")
+def draft_consumer_notice(body: ConsumerNoticeIn):
+    return {"draft": drafts.consumer_notice_draft(**body.model_dump()), "submitted": False,
+            "next_steps": "Send it to the company's grievance officer (email or registered post) and keep proof. If it is not resolved, register on the National Consumer Helpline (1915 / https://consumerhelpline.gov.in) and then, if needed, file on https://edaakhil.nic.in."}
 
 
 # ---------------- Reports ----------------

@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/api";
 import { useFetch } from "@/lib/useFetch";
 import { ErrorBox, Notice, SkeletonCards, VerificationBadge } from "@/components/ui";
 import type { Card } from "@/lib/types";
+import { QuickCards } from "@/components/QuickCards";
 
 type Errs = Record<string, string>;
 
@@ -121,9 +122,80 @@ function RTIForm() {
   );
 }
 
+type FieldSpec = { k: string; label: string; min: number; max: number; multiline?: boolean; hint?: string; placeholder?: string; optional?: boolean; half?: boolean };
+
+/** Generic validated form → POST endpoint → draft letter. */
+function TemplateForm({ endpoint, fields, submitLabel, extra }: { endpoint: string; fields: FieldSpec[]; submitLabel: string; extra?: Record<string, unknown> }) {
+  const [f, setF] = useState<Record<string, string>>(() => Object.fromEntries(fields.map((x) => [x.k, ""])));
+  const [errs, setErrs] = useState<Errs>({});
+  const [res, setRes] = useState<{ draft: string; next_steps: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const id = (k: string) => `${endpoint.replace(/\W/g, "")}-${k}`;
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const v: Errs = {};
+    for (const x of fields) {
+      const val = (f[x.k] || "").trim();
+      if (!x.optional && val.length < x.min) v[x.k] = x.min > 5 ? `Please add a little more detail (at least ${x.min} characters).` : "This is required.";
+    }
+    setErrs(v);
+    if (Object.keys(v).length) { document.getElementById(id(Object.keys(v)[0]))?.focus(); return; }
+    setBusy(true); setErr(null);
+    try { setRes(await api(endpoint, { method: "POST", json: { ...f, ...extra } })); }
+    catch (e) { setErr(e instanceof ApiError ? e.message : "Could not prepare the draft."); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-2">
+      {fields.map((x) => (
+        <div key={x.k} className={x.half ? "" : "sm:col-span-2"}>
+          <Field id={id(x.k)} label={`${x.label}${x.optional ? " (optional)" : ""}`} err={errs[x.k]} hint={x.hint}>
+            {x.multiline
+              ? <textarea id={id(x.k)} className="input min-h-28" maxLength={x.max} value={f[x.k]} placeholder={x.placeholder} onChange={(e) => setF({ ...f, [x.k]: e.target.value })} aria-invalid={!!errs[x.k]} aria-describedby={errs[x.k] ? `${id(x.k)}-err` : undefined} />
+              : <input id={id(x.k)} className="input" maxLength={x.max} value={f[x.k]} placeholder={x.placeholder} onChange={(e) => setF({ ...f, [x.k]: e.target.value })} aria-invalid={!!errs[x.k]} aria-describedby={errs[x.k] ? `${id(x.k)}-err` : undefined} />}
+          </Field>
+        </div>
+      ))}
+      <p className="text-xs text-muted sm:col-span-2">We do not store what you type here. Never include Aadhaar, bank or OTP details.</p>
+      {err && <div className="sm:col-span-2"><ErrorBox message={err} /></div>}
+      <button className="btn btn-primary justify-self-start" disabled={busy}><FilePenLine size={16} aria-hidden />{busy ? "Preparing…" : submitLabel}</button>
+      {res && <div className="sm:col-span-2"><DraftResult draft={res.draft} nextSteps={res.next_steps} /></div>}
+    </form>
+  );
+}
+
+const FIR_FIELDS: FieldSpec[] = [
+  { k: "district", label: "District", min: 2, max: 120, half: true, placeholder: "e.g. Vellore" },
+  { k: "police_station", label: "Police station that refused", min: 2, max: 160, half: true, placeholder: "e.g. Katpadi" },
+  { k: "incident_date", label: "Date of the incident", min: 4, max: 40, half: true, placeholder: "e.g. 1 October 2026" },
+  { k: "incident_place", label: "Place of the incident", min: 2, max: 200, half: true },
+  { k: "facts", label: "What happened (facts only)", min: 20, max: 4000, multiline: true, hint: "Who, what, when, where. Stick to facts you can support." },
+  { k: "refusal_details", label: "How the police refused", min: 5, max: 1500, multiline: true, placeholder: "e.g. On 2 Oct at 6 pm the duty officer refused to write the complaint and asked me to come later." },
+  { k: "applicant_name", label: "Your name", min: 1, max: 120, half: true },
+  { k: "contact", label: "Phone or email", min: 3, max: 200, half: true },
+  { k: "address", label: "Your address", min: 5, max: 400 },
+];
+
+const CONSUMER_FIELDS: FieldSpec[] = [
+  { k: "company", label: "Company / seller", min: 2, max: 200, half: true },
+  { k: "company_address", label: "Company address or email", min: 0, max: 400, half: true, optional: true },
+  { k: "product", label: "Product or service", min: 2, max: 200, half: true },
+  { k: "purchase_date", label: "Date of purchase / service", min: 4, max: 40, half: true },
+  { k: "order_ref", label: "Order / invoice number", min: 0, max: 120, half: true, optional: true },
+  { k: "amount", label: "Amount paid", min: 0, max: 40, half: true, optional: true, placeholder: "e.g. ₹12,499" },
+  { k: "problem", label: "What went wrong", min: 20, max: 4000, multiline: true },
+  { k: "relief", label: "What you want", min: 5, max: 1000, placeholder: "e.g. replace the phone or refund the full amount" },
+  { k: "applicant_name", label: "Your name", min: 1, max: 120, half: true },
+  { k: "contact", label: "Phone or email", min: 3, max: 200, half: true },
+];
+
 function ComplaintsInner() {
   const sp = useSearchParams();
-  const [tab, setTab] = useState<"complaint" | "rti">(sp.get("draft") === "rti" ? "rti" : "complaint");
+  const d0 = sp.get("draft");
+  const [tab, setTab] = useState<"complaint" | "rti" | "fir" | "consumer">(d0 === "rti" || d0 === "fir" || d0 === "consumer" ? d0 : "complaint");
   const { data, loading, error, reload } = useFetch<{ items: Card[] }>("/guides?kind=complaint");
 
   return (
@@ -132,7 +204,12 @@ function ComplaintsInner() {
       <p className="mt-2 max-w-3xl text-muted">Find the right official channel, prepare a clear factual letter, and know how to escalate.</p>
       <p role="note" className="mt-4 flex items-center gap-2 rounded-xl bg-red-50 p-4 font-semibold text-red-900"><Siren size={20} aria-hidden />Emergency: call 112. Online money fraud: call 1930 immediately. Free legal aid: 15100.</p>
 
-      <section aria-labelledby="cat" className="mt-8">
+      <section aria-labelledby="quick" className="mt-8">
+        <h2 id="quick" className="font-display text-2xl text-navy-900">Quick help</h2>
+        <div className="mt-4"><QuickCards /></div>
+      </section>
+
+      <section aria-labelledby="cat" className="mt-10">
         <h2 id="cat" className="font-display text-2xl text-navy-900">What is the problem about?</h2>
         {loading && <SkeletonCards n={6} />}
         {error && <ErrorBox message={error} onRetry={reload} />}
@@ -152,11 +229,23 @@ function ComplaintsInner() {
       <section aria-labelledby="draft" className="card mt-10 p-6">
         <h2 id="draft" className="font-display text-2xl text-navy-900">Draft a letter</h2>
         <Notice>JanSaathi prepares a draft for you to review. We do not send or file anything — you submit it yourself on the official channel.</Notice>
-        <div role="tablist" aria-label="Draft type" className="mt-4 flex gap-2">
-          <button role="tab" aria-selected={tab === "complaint"} onClick={() => setTab("complaint")} className={`btn ${tab === "complaint" ? "btn-primary" : "btn-ghost"}`}>Complaint / grievance letter</button>
-          <button role="tab" aria-selected={tab === "rti"} onClick={() => setTab("rti")} className={`btn ${tab === "rti" ? "btn-primary" : "btn-ghost"}`}>RTI application</button>
+        <div role="tablist" aria-label="Letter type" className="mt-4 flex flex-wrap gap-2">
+          {([["complaint", "Complaint / grievance"], ["rti", "RTI application"], ["fir", "FIR refused — letter to SP"], ["consumer", "Consumer complaint to a company"]] as const).map(([k, l]) => (
+            <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`btn ${tab === k ? "btn-primary" : "btn-ghost"}`}>{l}</button>
+          ))}
         </div>
-        <div className="mt-5" role="tabpanel">{tab === "complaint" ? <ComplaintForm topic={sp.get("topic") || ""} /> : <RTIForm />}</div>
+        <div className="mt-5" role="tabpanel">
+          {tab === "complaint" && <ComplaintForm topic={sp.get("topic") || ""} />}
+          {tab === "rti" && <RTIForm />}
+          {tab === "fir" && <>
+            <Notice>Use this when a police station refuses to register an FIR for a cognizable offence. The letter goes to the district Superintendent of Police under BNSS Section 173(4). In an emergency call 112. <Link href="/guides/guide-fir-refusal" className="font-semibold underline">Read the guide</Link>.</Notice>
+            <div className="mt-4"><TemplateForm endpoint="/drafts/fir-refusal" fields={FIR_FIELDS} submitLabel="Prepare letter to SP" /></div>
+          </>}
+          {tab === "consumer" && <>
+            <Notice>Send this to the company first. If it is not resolved, call the National Consumer Helpline 1915 and then file on e-Daakhil. <Link href="/guides/complaint-consumer" className="font-semibold underline">Read the guide</Link>.</Notice>
+            <div className="mt-4"><TemplateForm endpoint="/drafts/consumer-notice" fields={CONSUMER_FIELDS} submitLabel="Prepare letter" extra={{ days: 15 }} /></div>
+          </>}
+        </div>
       </section>
     </div>
   );

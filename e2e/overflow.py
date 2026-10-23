@@ -6,7 +6,7 @@ from playwright.async_api import async_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:3000"
 PAGES = ["/", "/schemes", "/schemes/central-sector-scholarship-college-university", "/eligibility", "/rights", "/rights/art-21",
-         "/guides/guide-arrest", "/services", "/services/svc-rti", "/complaints", "/ask", "/dashboard", "/about", "/login", "/admin"]
+         "/guides/guide-arrest", "/services", "/services/svc-rti", "/complaints", "/ask", "/dashboard", "/about", "/login", "/admin", "/offices", "/guides/guide-fir-refusal", "/complaints?draft=fir"]
 JS = """() => { const W = document.documentElement.clientWidth;
   const bad = [...document.querySelectorAll('body *')].filter(e => e.getBoundingClientRect().right > W + 1)
     .slice(0, 3).map(e => e.tagName + '.' + (e.className || '').toString().slice(0, 70));

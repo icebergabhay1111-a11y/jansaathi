@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClipboardCheck } from "lucide-react";
 import { ItemActions } from "@/components/ItemActions";
+import { DocumentChecklist, type ChecklistItem } from "@/components/DocumentChecklist";
 import { FreshnessNotice, List, OfficialButton, ResultCard, Section, SourcesList, VerificationBadge } from "@/components/ui";
 import { serverGet, serverLang } from "@/lib/server";
 import type { Card, Freshness, Source, VStatus } from "@/lib/types";
@@ -13,6 +14,7 @@ type Scheme = {
   info_url: string | null; opens_on: string | null; closes_on: string | null; renewal: string | null; selection_process: string | null;
   rejection_reasons: string[]; grievance: string | null; faqs: { q: string; a: string }[]; sources: Source[]; last_verified: string | null;
   verification_status: VStatus; verification_note: string | null; freshness: Freshness; application_window: string; related: Card[]; version: number;
+  document_checklist: ChecklistItem[];
 };
 
 export async function generateMetadata({ params }: PageProps<"/schemes/[slug]">) {
@@ -64,9 +66,8 @@ export default async function SchemePage({ params }: PageProps<"/schemes/[slug]"
           <p className="font-semibold">{s.benefit_type}</p>
           {s.benefit_amount ? <p className="mt-1">{s.benefit_amount}</p> : <p className="mt-1 rounded-lg bg-saffron-50 p-3 text-sm text-saffron-dark">The benefit amount has not been verified by JanSaathi yet, so we do not show it. Please check the official website.</p>}
         </Section>
-        <Section title="Documents usually required" id="docs">
-          <List items={s.documents} />
-          <p className="mt-3 text-sm text-muted">Never share Aadhaar numbers, OTPs, passwords or bank details with anyone claiming to “help” with a scheme. JanSaathi never asks for them.</p>
+        <Section title="Document checklist — and where to get each one" id="docs">
+          <DocumentChecklist slug={s.slug} items={s.document_checklist || s.documents.map((t) => ({ text: t, doc: null }))} />
         </Section>
         <Section title="How to apply" id="how">
           <List items={s.application_steps} ordered />

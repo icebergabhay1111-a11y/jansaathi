@@ -26,7 +26,8 @@ QUESTIONS: dict[str, dict[str, Any]] = {
     "gender": {"q": "Gender (optional)", "q_hi": "लिंग (वैकल्पिक)", "type": "choice", "options": ["female", "male", "other"], "why": "A few schemes are only for women or girls. Skip if you prefer.", "sensitive": True},
     "occupation": {"q": "What best describes your current situation?", "q_hi": "आपकी वर्तमान स्थिति क्या है?", "type": "choice", "options": ["student", "farmer", "unorganised_worker", "salaried", "self_employed", "street_vendor", "artisan", "unemployed", "homemaker", "retired"], "why": "Schemes target specific groups such as students, farmers or workers.", "sensitive": False},
     "area": {"q": "Do you live in a rural or urban area?", "q_hi": "आप ग्रामीण क्षेत्र में रहते हैं या शहरी?", "type": "choice", "options": ["rural", "urban"], "why": "Some programmes are only for rural or only for urban households.", "sensitive": False},
-    "annual_income": {"q": "Approximate annual household income (₹) — optional", "q_hi": "परिवार की अनुमानित वार्षिक आय (₹) — वैकल्पिक", "type": "number", "min": 0, "max": 100000000, "why": "Some schemes have income ceilings. An estimate is enough; we never ask for documents.", "sensitive": True},
+    "annual_income": {"q": "Approximate annual household income — optional", "q_hi": "परिवार की अनुमानित वार्षिक आय — वैकल्पिक", "type": "number", "min": 0, "max": 100000000, "why": "Some schemes have income limits. Pick a range — we never ask for documents or exact figures.", "sensitive": True},
+    "social_category": {"q": "Social category (optional)", "q_hi": "सामाजिक श्रेणी (वैकल्पिक)", "type": "choice", "options": ["general", "obc", "sc", "st"], "why": "Only a few schemes are reserved for SC/ST or OBC applicants. This is optional — skip it and those schemes will show as 'more information required'. Your answer is not stored.", "sensitive": True},
     "income_tax_payer": {"q": "Are you (or have you been) an income-tax payer?", "q_hi": "क्या आप आयकरदाता हैं या रहे हैं?", "type": "bool", "why": "Some schemes exclude income-tax payers.", "sensitive": True},
     "land_owner": {"q": "Does your family own cultivable land?", "q_hi": "क्या आपके परिवार के पास खेती योग्य भूमि है?", "type": "bool", "why": "Some farmer schemes require landholding.", "sensitive": False},
     "has_bank_account": {"q": "Do you have a savings bank or post office account?", "q_hi": "क्या आपका बचत बैंक या डाकघर खाता है?", "type": "bool", "why": "Several schemes pay benefits only into a bank account.", "sensitive": False},
@@ -38,6 +39,11 @@ QUESTIONS: dict[str, dict[str, Any]] = {
 
 
 def _check(rule: dict, answers: dict) -> str:
+    if rule["op"] == "any":  # pass if any sub-rule passes; fail only if all fail
+        results = [_check(r, answers) for r in rule.get("rules", [])]
+        if "pass" in results:
+            return "pass"
+        return "fail" if results and all(r == "fail" for r in results) else "unknown"
     field, op, val = rule["field"], rule["op"], rule.get("value")
     if field not in answers or answers[field] in (None, ""):
         return "unknown"
@@ -82,7 +88,7 @@ def evaluate(scheme: Any, answers: dict, interests: list[str] | None = None, tod
 
     for rule in scheme.eligibility_rules or []:
         r = _check(rule, answers)
-        item = {"field": rule["field"], "label": rule["label"]}
+        item = {"field": rule.get("field") or ",".join(x["field"] for x in rule.get("rules", [])), "label": rule["label"]}
         {"pass": satisfied, "fail": failed, "unknown": missing}[r].append(item)
 
     window = application_window(scheme.opens_on, scheme.closes_on, today)
@@ -113,7 +119,7 @@ def evaluate(scheme: Any, answers: dict, interests: list[str] | None = None, tod
         "satisfied": satisfied,
         "missing": missing,
         "failed": failed,
-        "missing_fields": sorted({m["field"] for m in missing}),
+        "missing_fields": sorted({f for m in missing for f in m["field"].split(",")}),
         "verification_status": scheme.verification_status,
         "info_url": scheme.info_url,
         "apply_url": scheme.apply_url,
@@ -139,8 +145,9 @@ def relevant_questions(schemes: list, interests: list[str] | None) -> list[dict]
     used = ["state"]
     for s in pool:
         for r in s.eligibility_rules or []:
-            if r["field"] not in used:
-                used.append(r["field"])
+            for f in ([x["field"] for x in r.get("rules", [])] if r["op"] == "any" else [r["field"]]):
+                if f not in used:
+                    used.append(f)
     order = list(QUESTIONS)
     used.sort(key=lambda f: order.index(f) if f in order else 999)
     return [{"field": f, **QUESTIONS[f]} for f in used if f in QUESTIONS]

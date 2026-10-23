@@ -49,6 +49,9 @@ export default function About() {
           <li>We never ask for Aadhaar numbers, bank details, OTPs, passwords for other services, caste, religion or identity documents.</li>
           <li>Eligibility answers stay in your browser tab (session storage) and are sent to our server only to compute results; they are not saved.</li>
           <li>Assistant conversations are not stored on our servers. If you turn on “keep history”, it is stored only in your browser. When an AI provider is configured, your question and the retrieved public records are sent to that provider to generate the answer.</li>
+          <li><strong>Voice input:</strong> in Chrome/Edge your speech is converted to text by the browser’s own speech service. In other browsers a short recording is sent to Google’s Gemini API only to convert it to text; JanSaathi does not store the audio.</li>
+          <li><strong>Office finder:</strong> if you allow location (or type a place), it is sent from your browser directly to OpenStreetMap services to find nearby offices. JanSaathi’s server never receives your location.</li>
+          <li>Document checklist ticks are saved only in your browser.</li>
           <li>If you create an account we store your email, a bcrypt-hashed password, your saved items and reminders. You can download or permanently delete them from your dashboard.</li>
           <li>Reports you send about wrong information are stored without your identity.</li>
           <li>Server logs keep request paths and timings for security and debugging; we do not sell data or use it for advertising.</li>

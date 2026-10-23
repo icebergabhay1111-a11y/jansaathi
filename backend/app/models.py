@@ -158,6 +158,8 @@ class SavedItem(Base):
     item_slug: Mapped[str] = mapped_column(String(120))
     my_status: Mapped[str] = mapped_column(String(30), default="interested")  # user-entered, never synced
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    applied_on: Mapped[date | None] = mapped_column(Date, nullable=True)          # user-entered
+    reference_no: Mapped[str | None] = mapped_column(String(80), nullable=True)   # user's own application/ack number
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

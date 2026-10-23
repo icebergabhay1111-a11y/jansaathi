@@ -13,14 +13,19 @@ JanSaathi is an **independent** information platform. It is **not** a Government
 | Area | What you can do |
 |---|---|
 | **Scheme discovery** | Browse/search 22 real central & state schemes; filter by category, state, level, verification; paginate; sort |
-| **Eligibility matcher** | Guided, privacy-first questionnaire (asks only questions relevant to chosen categories); deterministic rule engine explains satisfied / missing / failed conditions with careful labels ("Potential match", never "eligible") |
+| **Eligibility checker** | Guided questionnaire — state, age, income bracket, occupation, optional social category and more, asking only what the chosen categories need; deterministic rules explain satisfied / missing / failed conditions ("Potential match", never "eligible") |
+| **Voice input** | Speak in Hindi, Tamil or English on Ask and the homepage search — browser speech recognition, with Gemini transcription as fallback |
+| **Document checklist** | Per-scheme checklist that says where to get each document (Aadhaar, income/caste certificates, bank account…), with links and on-device ticks |
+| **Application tracker** | Saved schemes with your status, applied-on date, acknowledgement number, per-scheme reminders, "coming up" alerts and Add-to-calendar (.ics) |
+| **Quick rights cards** | FIR refused, RTI, consumer complaint, arrest, online fraud — 3 steps each, with ready template letters (letter to SP under BNSS s.173(4), consumer notice, RTI, grievance) |
+| **Nearby office finder** | CSC / e-Sevai centres, taluk/tehsil, panchayat, municipal and post offices near you (OpenStreetMap), with distance and directions |
 | **Know your rights** | 27 constitutional entries (Preamble, Arts. 14–32, 21A, 226, 39A, 51A + structure-of-government overviews) in plain English and explanatory Hindi; 11 everyday-rights guides |
 | **Government services** | 22 service guides (RTI, CPGRAMS, passport, voter registration, birth/death certificate, UDID, e-Shram, Udyam, legal aid…) linking to official portals |
 | **Complaints & legal aid** | 8 grievance guides with official channels and escalation; complaint-letter and RTI-application **draft** generators |
 | **Ask JanSaathi** | Retrieval-grounded assistant (Gemini) answering only from published records, with numbered citations; works without AI (deterministic answers from the same records) |
 | **Accounts (optional)** | Register/login (bcrypt + httpOnly JWT cookie), save items, user-entered application status, document checklists, reminders, data export, account deletion |
 | **Admin** | Role-based (editor/admin) content management, Draft → Source review → Verified → Approved → Published workflow, verification recording, version history, review queue for stale/unverified records, citizen reports, validated JSON import, audit log |
-| **Languages** | English and Hindi UI; Hindi search terms; Hindi AI answers. Tamil etc. are *planned*, not claimed |
+| **Languages** | English and Hindi interface and content; Hindi and Tamil search terms; AI answers and voice input in Hindi, Tamil and English (Tamil answers are AI-generated and labelled as such) |
 | **Trust** | Every record shows source, verification status and date; unverified records hide benefit amounts and show warnings; links must be official `https` government domains |
 
 See [`docs/FEATURES.md`](docs/FEATURES.md) for the complete list, including what still needs credentials.
@@ -74,7 +79,7 @@ Dashboard → New → Blueprint → select this repo. `render.yaml` creates a fr
 
 ### Enabling the AI assistant (Gemini)
 1. Create a key at Google AI Studio.
-2. Put `GEMINI_API_KEY=...` in `backend/.env` (never in the frontend). Optionally set `GEMINI_MODEL` (default `gemini-2.5-flash`).
+2. Put `GEMINI_API_KEY=...` in `backend/.env` (never in the frontend). Optionally set `GEMINI_MODEL` (default `gemini-3.8-flash`; if your key can't use it, the app automatically tries `GEMINI_FALLBACK_MODELS`).
 3. Restart the backend. `/api/health` shows `"ai_configured": true`.
 
 If the key is missing, the quota runs out, or Gemini errors, the assistant automatically returns record-based answers and labels them as such — search, the matcher and all pages keep working.
@@ -82,11 +87,12 @@ If the key is missing, the quota runs out, or Gemini errors, the assistant autom
 ## Tests
 
 ```bash
-cd backend && python -m pytest -q                       # 39 unit + integration tests (SQLite)
+cd backend && python -m pytest -q                       # 53 unit + integration tests (SQLite)
 TEST_DATABASE_URL=postgresql+psycopg://... python -m pytest -q   # same suite on PostgreSQL
 # with both servers running:
 python e2e/journeys.py      # 8 browser journeys (Playwright)
-python e2e/overflow.py      # mobile-width layout + page-error check on 15 pages
+python e2e/features_v2.py   # 8 browser tests: voice, checklist, tracker, quick cards, office finder
+python e2e/overflow.py      # mobile-width layout + page-error check on 18 pages
 ```
 
 See [`docs/TESTING.md`](docs/TESTING.md) for what each test covers and what was **not** tested.
