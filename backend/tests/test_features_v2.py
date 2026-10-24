@@ -101,7 +101,7 @@ class FakeVoice(AIProvider):
     def __init__(self):
         self.seen = None
 
-    def generate(self, system, messages):
+    def generate(self, system, messages, budget=None):
         if "search keywords" in system:
             return "old age pension"
         return "பதில் [1]"

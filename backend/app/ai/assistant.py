@@ -9,7 +9,9 @@ Sources returned are always the retrieved records themselves — never model-inv
 from __future__ import annotations
 
 import re
+import time
 
+from ..config import get_settings
 from ..search import search
 from .provider import AIProvider, AIUnavailable
 
@@ -51,7 +53,7 @@ def search_query_for(provider: AIProvider | None, question: str) -> tuple[str, s
     if provider is None or not (TAMIL_RE.search(question) or (not question.isascii() and not DEVANAGARI_RE.search(question))):
         return question, None
     try:
-        kw = provider.generate(TRANSLATE_SYSTEM, [{"role": "user", "content": question}]).strip().splitlines()[0][:300]
+        kw = provider.generate(TRANSLATE_SYSTEM, [{"role": "user", "content": question}], budget=8).strip().splitlines()[0][:300]
         return f"{question} {kw}", kw
     except AIUnavailable:
         return question, None
@@ -123,7 +125,10 @@ def answer(provider: AIProvider | None, collections: dict, question: str, histor
     lang = lang if lang in LANG_NAMES else "en"
     # retrieve on the question plus the last user turn for follow-ups like "what documents?"
     prev = next((m["content"] for m in reversed(history) if m["role"] == "user"), "")
+    started = time.monotonic()
     query, translated = search_query_for(provider, question)
+    # whole request (translation + answer) stays within the configured AI budget
+    answer_budget = max(4.0, get_settings().ai_timeout_seconds - (time.monotonic() - started))
     hits = retrieve(collections, f"{query} {prev}" if len(question.split()) < 5 and prev else query)
     blocks, metas = zip(*[_record_text(i + 1, h["kind"], h["obj"]) for i, h in enumerate(hits)]) if hits else ((), ())
     metas = list(metas)
@@ -134,7 +139,7 @@ def answer(provider: AIProvider | None, collections: dict, question: str, histor
         msgs = [m for m in history[-6:] if m.get("role") in ("user", "assistant")]
         msgs.append({"role": "user", "content": f"{ctx}\n\nQUESTION: {question}"})
         try:
-            text = provider.generate(SYSTEM.format(language=LANG_NAMES[lang]), msgs)
+            text = provider.generate(SYSTEM.format(language=LANG_NAMES[lang]), msgs, budget=answer_budget)
             mode = "ai"
         except AIUnavailable as e:
             reason = str(e)

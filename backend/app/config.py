@@ -48,7 +48,9 @@ class Settings:
         self.gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
         # tried in order if the main model is not available to this API key
         self.gemini_fallback_models = [m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.6-flash,gemini-3.5-flash-lite,gemini-2.5-flash").split(",") if m.strip()]
+        # Total time an answer may wait for the AI (all models together), and the cap per model attempt.
         self.ai_timeout_seconds = float(os.getenv("AI_TIMEOUT_SECONDS", "25"))
+        self.ai_model_timeout_seconds = float(os.getenv("AI_MODEL_TIMEOUT_SECONDS", "12"))
 
         self.rate_limit_chat_per_min = int(os.getenv("RATE_LIMIT_CHAT_PER_MIN", "12"))
         self.rate_limit_auth_per_min = int(os.getenv("RATE_LIMIT_AUTH_PER_MIN", "10"))

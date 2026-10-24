@@ -3,8 +3,8 @@
 ## Results at build time (23 Oct 2026)
 | Suite | Result |
 |---|---|
-| Backend unit + integration (`backend/tests`), SQLite | **53 passed** |
-| Same suite on PostgreSQL 16 | **53 passed** |
+| Backend unit + integration (`backend/tests`), SQLite | **59 passed** |
+| Same suite on PostgreSQL 16 | **59 passed** |
 | Migration upgrade from the v0.1 schema on PostgreSQL (production path) | OK |
 | Alembic migration + seed on SQLite and PostgreSQL | OK, 0 validation errors |
 | Frontend `tsc`, `next build`, ESLint | Pass (7 lint warnings, 0 errors — see Known limitations) |

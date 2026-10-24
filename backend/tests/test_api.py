@@ -80,14 +80,14 @@ def test_article_search_and_assistant_fallback(client):
 class Boom(AIProvider):
     name = "boom"
 
-    def generate(self, system, messages):
+    def generate(self, system, messages, budget=None):
         raise AIUnavailable("quota exceeded")
 
 
 class Fake(AIProvider):
     name = "fake"
 
-    def generate(self, system, messages):
+    def generate(self, system, messages, budget=None):
         assert "SOURCE RECORDS" in messages[-1]["content"] and "Never invent" in system
         return "You may be able to apply [1]."
 
