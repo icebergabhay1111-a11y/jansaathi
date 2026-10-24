@@ -2,7 +2,15 @@
 import httpx
 import pytest
 
+from app.ai import provider as prov
 from app.ai.provider import AIUnavailable, GeminiProvider
+
+
+@pytest.fixture(autouse=True)
+def _reset_cooldown():
+    prov._cooldown_until.clear()
+    yield
+    prov._cooldown_until.clear()
 
 
 class R:
@@ -103,3 +111,29 @@ def test_total_budget_is_respected(monkeypatch):
         GeminiProvider("k", "a", 25, ["b", "c", "d"], per_model_timeout=12).generate("s", [{"role": "user", "content": "q"}], budget=25)
     # 12s + 12s used; the 1s left is under the 2s minimum, so no third attempt is started
     assert seen == [12, 12]
+
+
+def test_failed_model_is_skipped_during_cooldown(monkeypatch):
+    from app.ai import provider as prov
+    prov._cooldown_until.clear()
+    calls = []
+
+    def fake_post(url, json, timeout, headers):
+        model = url.split("/models/")[1].split(":")[0]
+        calls.append(model)
+        return R(503, {}) if model == "slow" else _ok("fast answer")
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    p = GeminiProvider("k", "slow", 25, ["fast"])
+    assert p.generate("s", [{"role": "user", "content": "q"}]) == "fast answer"
+    assert p.generate("s", [{"role": "user", "content": "q"}]) == "fast answer"
+    assert calls == ["slow", "fast", "fast"]  # second request skips the overloaded model
+    prov._cooldown_until.clear()
+
+
+def test_missing_model_is_not_cooled(monkeypatch):
+    from app.ai import provider as prov
+    prov._cooldown_until.clear()
+    monkeypatch.setattr(httpx, "post", lambda url, **k: R(404, {}) if "/models/a:" in url else _ok())
+    GeminiProvider("k", "a", 25, ["b"]).generate("s", [{"role": "user", "content": "q"}])
+    assert "a" not in prov._cooldown_until

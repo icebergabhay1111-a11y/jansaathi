@@ -16,6 +16,21 @@ log = logging.getLogger("jansaathi.ai")
 # per-model quota (429) and temporary overload/outage (5xx).
 RETRY_NEXT_MODEL = {400, 403, 404, 429, 500, 502, 503, 504}
 
+# Models that just timed out, were overloaded or over quota are skipped for a while, so one slow
+# model does not make every visitor wait for it (per process; resets on restart).
+COOLDOWN_SECONDS = 300
+_cooldown_until: dict[str, float] = {}
+
+
+def _cool(model: str) -> None:
+    _cooldown_until[model] = time.monotonic() + COOLDOWN_SECONDS
+
+
+def _ordered(models: list[str]) -> list[str]:
+    """Healthy models first (in configured order), cooling-down models last as a final resort."""
+    now = time.monotonic()
+    return [m for m in models if _cooldown_until.get(m, 0) <= now] + [m for m in models if _cooldown_until.get(m, 0) > now]
+
 
 class AIUnavailable(Exception):
     """Raised when no provider is configured or the provider call fails."""
@@ -56,7 +71,7 @@ class GeminiProvider(AIProvider):
     def _call(self, body_for, max_tokens: int, budget: float | None = None) -> str:
         deadline = time.monotonic() + (budget or self.timeout)
         reasons: list[str] = []
-        for model in self.models:
+        for model in _ordered(self.models):
             remaining = deadline - time.monotonic()
             if remaining < 2:
                 reasons.append("time budget used up")
@@ -69,6 +84,7 @@ class GeminiProvider(AIProvider):
                                headers={"x-goog-api-key": self.api_key, "content-type": "application/json"})
             except httpx.TimeoutException:
                 log.warning("gemini model=%s timed out after %.1fs", model, time.monotonic() - t0)
+                _cool(model)
                 reasons.append(f"{model} timed out")
                 continue
             except httpx.HTTPError as e:
@@ -76,6 +92,8 @@ class GeminiProvider(AIProvider):
                 raise AIUnavailable(f"network error: {type(e).__name__}") from e
             log.info("gemini model=%s status=%s %.1fs", model, r.status_code, time.monotonic() - t0)
             if r.status_code in RETRY_NEXT_MODEL:
+                if r.status_code == 429 or r.status_code >= 500:
+                    _cool(model)  # 400/403/404 are permanent for this key; listed models stay in order
                 reasons.append(f"{model} {'quota exceeded' if r.status_code == 429 else r.status_code}")
                 continue
             if r.status_code >= 400:
